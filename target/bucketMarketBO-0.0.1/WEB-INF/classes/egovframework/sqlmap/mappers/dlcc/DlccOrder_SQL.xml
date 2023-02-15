@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DlccOrderMapper">
+    <!-- DLCC 상품 가입 > 회원정보 등록 -->
+    <insert id="mergeOrderMasterDlcc" parameterType="HashMap">
+        /* DlccOrderMapper.mergeOrderMasterDlcc */
+        MERGE INTO DLCCSUB.TB_DR_I_ORD_MST IOM
+            USING (SELECT #{CI_VAL} CI_VAL FROM DUAL) TD
+            ON (IOM.CI_VAL = TD.CI_VAL)
+        WHEN MATCHED THEN
+            UPDATE SET
+                MEM_NM = #{MEM_NM},
+                CELL = #{CELL},
+                BRTH_MON_DAY = #{BRTH_MON_DAY},
+                SEX = #{SEX},
+                HOME_ZIP = #{HOME_ZIP},
+                HOME_ADDR = #{HOME_ADDR},
+                HOME_ADDR2 = #{HOME_ADDR2},
+                HOME_TEL = REPLACE(#{HOME_TEL}, '-', ''),
+                EMAIL = #{EMAIL},
+                MARKT_AGR_YN = #{MARKT_AGR_YN}
+        WHEN NOT MATCHED THEN
+            INSERT (
+                CI_VAL,
+                MEM_NM,
+                CELL,
+                BRTH_MON_DAY,
+                SEX,
+                HOME_ZIP,
+                HOME_ADDR,
+                HOME_ADDR2,
+                HOME_TEL,
+                EMAIL,
+                REG_DM,
+                REG_MAN,
+                MARKT_AGR_YN
+            ) VALUES (
+                #{CI_VAL},
+                #{MEM_NM},
+                #{CELL},
+                #{BRTH_MON_DAY},
+                #{SEX},
+                #{HOME_ZIP},
+                #{HOME_ADDR},
+                #{HOME_ADDR2},
+                REPLACE(#{HOME_TEL}, '-', ''),
+                #{EMAIL},
+                CURRENT_TIMESTAMP,
+                #{REG_MAN},
+                #{MARKT_AGR_YN}
+            )
+    </insert>
+    <!-- DLCC 상품 가입 > 상품정보 등록 -->
+    <insert id="insertOrderDetailDlcc" parameterType="HashMap">
+        /* DlccOrderMapper.insertOrderDetailDlcc */
+        INSERT INTO DLCCSUB.TB_DR_I_ORD_DTL (
+            CI_VAL,
+            RDP_MST_IDX,
+            ORD_MST_IDX,
+            B2B_CD,
+            PROD_CD,
+            PROD_KIND,
+            MODEL_CD,
+            INSPL_ZIP,
+            INSPL_ADDR,
+            INSPL_ADDR2,
+            HPCALL_TIME,
+            MAIN_CONTRACT,
+            REG_DM,
+            ORD_MST_VDR_BNF_ID
+        ) VALUES (
+            #{CI_VAL},
+            #{RDP_MST_IDX},
+            #{ORD_MST_IDX},
+            #{SALE_TYPE},
+            #{PROD_CD},
+            #{PROD_KIND},
+            #{MODEL_CD},
+            #{INSPL_ZIP},
+            #{INSPL_ADDR},
+            #{INSPL_ADDR2},
+            #{HPCALL_TIME},
+            #{MAIN_CONTRACT},
+            CURRENT_TIMESTAMP,
+            #{ORD_MST_VDR_BNF_ID}
+        )
+    </insert>
+</mapper>

@@ -1,0 +1,220 @@
+package web.bo.planner.controller;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.Code;
+import common.model.Manager.ROLE_MANAGER;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.model.Paging;
+import common.viewer.EXCEL;
+import web.bo.common.service.CommonService;
+import web.bo.planner.service.CommonPlannerService;
+import web.bo.planner.service.PlannerRankingService;
+import web.bo.planner.service.PlannerStatusService;
+
+/**
+ * <pre>
+ * &#64;PackageName: web.bo.planner.controller
+ * &#64;FileName : PlannerRankingController.java
+ * &#64;Date : 2020. 4. 3.
+ * &#64;프로그램 설명 : 관리자 > 레디플래너 > 현황조회
+ * &#64;author upleat
+ * </pre>
+ */
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class PlannerRankingController {
+
+    @Resource(name = "commonService")
+    private CommonService commonService;
+
+    @Resource(name = "plannerRankingService")
+    private PlannerRankingService plannerRankingService;
+
+    @Resource(name = "commonPlannerService")
+    private CommonPlannerService commonPlannerService;
+
+    @Resource(name = "plannerStatusService")
+    private PlannerStatusService plannerStatusService;
+
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerRankingList
+     * 2. ClassName  : PlannerRankingController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 현황조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerRankingList")
+    public ModelAndView plannerRankingList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+
+        // 공통코드
+        List<String> codeList = new ArrayList<>();
+        // 사업자 유형
+        codeList.add("PLANNER_BUSINESS_CLASS");
+        mv.addObject("codes", this.commonService.selectCodes(codeList.toArray(new String[codeList.size()])));
+
+        // 목록 개수
+        int totalCount = this.plannerRankingService.selectPlannerRankingListCount(commandMap);
+
+        // 페이징
+        Paging paging = new Paging(totalCount, commandMap);
+        mv.addObject("paging", paging);
+        commandMap.put("startNum", paging.getStartNum());
+        commandMap.put("endNum", paging.getEndNum());
+
+        // 목록
+        List<Map<String, Object>> list = null;
+        if (totalCount > 0) {
+            list = this.plannerRankingService.selectPlannerRankingList(commandMap);
+        }
+
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("list", list);
+
+        mv.setViewName("bo/planner/plannerRankingList");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculateHistoryListPop
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 현황조회/랭킹조회 > 상태 별 내역 팝업
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 22.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerRankingHistoryListPopup")
+    public ModelAndView plannerStatusHistoryListPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+
+        // 아래 코드는 플래너 현황조회의 상태별 내역 조회의 코드/페이지를 공유하고 있음.
+        // 랭킹조회 업무가 확정되면 아래 내용도 변경되어야 함.
+
+        // 플래너 프로필 조회
+        Map<String, Object> profile = commonPlannerService.selectPlannerProfile(commandMap);
+        mv.addObject("info", profile);
+
+        // 목록 개수
+        int totalCount = this.plannerStatusService.selectPlannerStatusHistoryListCount(commandMap);
+
+        // 페이징
+        Paging paging = new Paging(totalCount, commandMap);
+        mv.addObject("paging", paging);
+        commandMap.put("startNum", paging.getStartNum());
+        commandMap.put("endNum", paging.getEndNum());
+
+        // 등급 조회
+        List<Map<String, Object>> list = null;
+        if (totalCount > 0) {
+            list = this.plannerStatusService.selectPlannerStatusHistoryList(commandMap);
+        }
+
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("list", list);
+
+        mv.setViewName("bo/planner/plannerStatusHistoryListPopup");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerRankingExcelDownload
+     * 2. ClassName  : PlannerRankingController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 현황조회 > 엑셀 다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerRankingExcelDownload")
+    public EXCEL plannerRankingExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.plannerRankingService.selectPlannerRankingList(commandMap);
+        if (list != null) {
+            for (Map<String, Object> item : list) {
+                int RDP_MST_BUSI_CLS = StringUtil.getInt(item, "RDP_MST_BUSI_CLS");
+                if (RDP_MST_BUSI_CLS == Code.PLANNER_BUSINESS_CLASS_PRIVATE) {
+                    item.put("RDP_MST_SSN", StringUtil.getString(item, "RDP_MST_SSN1") + "-" + StringUtil.getString(item, "RDP_MST_SSN2"));
+                } else {
+                    item.put("RDP_MST_BUSI", StringUtil.getString(item, "RDP_MST_BUSI1") + "-" + StringUtil.getString(item, "RDP_MST_BUSI2") + "-" + StringUtil.getString(item, "RDP_MST_BUSI3"));
+                }
+                item.put("RDP_MST_DR_ADDR", StringUtil.getString(item, "RDP_MST_DR_ADDR1") + " " + StringUtil.getString(item, "RDP_MST_DR_ADDR2"));
+                Object adrListObj = item.get("RDP_SIT_ADR_LIST");
+                if (adrListObj != null) {
+                    List<String> RDP_SIT_ADR = new ArrayList<>();
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> adrList = (List<Map<String, Object>>) adrListObj;
+                    for (Map<String, Object> adr : adrList) {
+                        RDP_SIT_ADR.add(StringUtil.getString(adr, "RDP_SIT_ADR"));
+                    }
+                    item.put("RDP_SIT_ADR", StringUtils.join(RDP_SIT_ADR, "\n"));
+                }
+            }
+            excel.put("fileName", "daemyung_planner_ranking_" + DateUtil.getCurrentDateTime());
+            List<String[]> column = new ArrayList<>();
+            column.add(new String[] { "플래너번호", "RDP_MST_NO", "String", "50" });
+            column.add(new String[] { "이름", "RDP_MST_MEM_NM", "String", "80" });
+            column.add(new String[] { "연락처", "RDP_MST_HP", "String", "80" });
+            column.add(new String[] { "아이디", "RDP_MST_ID", "String", "50" });
+            column.add(new String[] { "총 접수건수", "TOTAL_RECEIPT", "String", "50" });
+            column.add(new String[] { "총 가입대기건수", "TOTAL_WAITING_TO_JOIN", "String", "50" });
+            column.add(new String[] { "총 가입건수", "TOTAL_JOIN", "String", "50" });
+            column.add(new String[] { "총 해약건수", "TOTAL_CANCEL", "String", "50" });
+            column.add(new String[] { "총 예상수익", "TOTAL_EXPECTED_RETURN", "String", "50" });
+            column.add(new String[] { "임직원 여부", "RDP_MST_DM_YN", "String", "50" });
+            column.add(new String[] { "사번", "RDP_MST_DM_NO", "String", "50" });
+            column.add(new String[] { "사업자유형", "RDP_MST_BUSI_CLS_NM", "String", "50" });
+            column.add(new String[] { "주민등록번호", "RDP_MST_SSN", "String", "50" });
+            column.add(new String[] { "사업자번호", "RDP_MST_BUSI", "String", "50" });
+            column.add(new String[] { "우편번호", "RDP_MST_ZIP_CODE", "String", "50" });
+            column.add(new String[] { "주소", "RDP_MST_DR_ADDR", "String", "200" });
+            column.add(new String[] { "은행정보", "RDP_MST_BNK_CD_NM", "String", "50" });
+            column.add(new String[] { "은행계좌", "RDP_MST_BNK_ACT", "String", "50" });
+            column.add(new String[] { "홍보계정", "RDP_SIT_ADR", "String", "100" });
+            column.add(new String[] { "자격", "RDP_MST_STATE_NM", "String", "50" });
+            excel.put("headerTitle", column.stream().map(a -> a[0]).toArray(String[]::new));
+            excel.put("cellField", column.stream().map(a -> a[1]).toArray(String[]::new));
+            excel.put("cellType", column.stream().map(a -> a[2]).toArray(String[]::new));
+            excel.put("colSize", column.stream().map(a -> a[3]).toArray(String[]::new));
+            excel.put("list", list);
+        }
+        return excel;
+    }
+}

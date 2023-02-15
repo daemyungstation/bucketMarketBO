@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CurationDisplay">
+
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 목록  -->
+    <resultMap id="resultCurationDisplayList" type="HashMap">
+        <result property="CRT_MST_IDX" column="CRT_MST_IDX"/>
+        <result property="CRT_MST_QST" column="CRT_MST_QST"/>
+        <collection property="keywordList" javaType="java.util.ArrayList" ofType="HashMap">
+            <result property="CRT_KWD_IDX" column="CRT_KWD_IDX"/>
+            <result property="CRT_KWD_SLT" column="CRT_KWD_SLT"/>
+            <result property="CRT_KWD_RLT" column="CRT_KWD_RLT"/>
+        </collection>
+    </resultMap>
+    <select id="selectCurationDisplayList" parameterType="HashMap" resultMap="resultCurationDisplayList">
+        /* CurationDisplay.selectCurationDisplayList */
+        SELECT
+            CM.CRT_MST_IDX,
+            CM.CRT_MST_QST,
+            CK.CRT_KWD_IDX,
+            CK.CRT_KWD_SLT,
+            CK.CRT_KWD_RLT
+        FROM T_CRT_MST CM, T_CRT_KWD CK
+        WHERE CM.CRT_MST_IDX = CK.CRT_MST_IDX
+        ORDER BY CM.CRT_MST_SRT, CK.CRT_KWD_SRT
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 키워드 삭제  -->
+    <delete id="deleteCurationDisplayKeyword" parameterType="HashMap">
+        /* CurationDisplay."deleteCurationDisplayKeyword" */
+        DELETE FROM T_CRT_KWD
+    </delete>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 삭제  -->
+    <delete id="deleteCurationDisplay" parameterType="HashMap">
+        /* CurationDisplay.deleteCurationDisplay */
+        DELETE FROM T_CRT_MST
+    </delete>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 등록  -->
+    <insert id="insertCurationDisplay" parameterType="HashMap">
+        <selectKey keyProperty="CRT_MST_IDX" keyColumn="CRT_MST_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_CRT_MST_IDX.NEXTVAL AS CRT_MST_IDX FROM DUAL
+        </selectKey>
+        /* CurationDisplay.insertCurationDisplay */
+        INSERT INTO T_CRT_MST (
+            CRT_MST_IDX,
+            CRT_MST_QST,
+            CRT_MST_SRT, 
+            CRT_MST_REG_DT,
+            CRT_MST_REG_IP,
+            CRT_MST_REG_ID
+        ) VALUES (
+            #{CRT_MST_IDX},
+            #{CRT_MST_QST},
+            #{CRT_MST_SRT},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{CRT_MST_REG_IP},
+            #{CRT_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 키워드 등록  -->
+    <insert id="insertCurationDisplayKeyword" parameterType="HashMap">
+        /* CurationDisplay.insertCurationDisplayKeyword */
+        INSERT INTO T_CRT_KWD (
+            CRT_KWD_IDX,
+            CRT_MST_IDX,
+            CRT_KWD_SRT,
+            CRT_KWD_SLT,
+            CRT_KWD_RLT,
+            CRT_KWD_REG_DT,
+            CRT_KWD_REG_IP,
+            CRT_KWD_REG_ID
+        ) VALUES (
+            SEQ_CRT_KWD_IDX.NEXTVAL,
+            #{CRT_MST_IDX},
+            #{CRT_KWD_SRT},
+            #{CRT_KWD_SLT},
+            #{CRT_KWD_RLT},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{CRT_KWD_REG_IP},
+            #{CRT_KWD_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 키워드 검색 > 조건절 -->
+    <sql id="curationDisplayKeywordWhere">
+        <where>
+            PRD_MST_KWD <![CDATA[<>]]> ' '
+            <if test="searchKeywordStartByte != null and searchKeywordStartByte != '' and searchKeywordEndByte != null and searchKeywordEndByte != ''">
+                AND PRD_MST_KWD BETWEEN NCHR(#{searchKeywordStartByte}) AND NCHR(#{searchKeywordEndByte})
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 키워드 검색 > 목록 개수 -->
+    <select id="selectCurationDisplayKeywordListCount" parameterType="HashMap" resultType="Integer">
+        /* CurationDisplay.selectCurationDisplayKeywordListCount */
+        WITH WT_PRD_MST AS (
+            SELECT DISTINCT PRD_MST_KWD
+            FROM C_PRD_MST
+            WHERE PRD_MST_KWD IS NOT NULL
+                AND PRD_MST_KWD <![CDATA[<>]]> ' '
+        )
+        SELECT COUNT(S1.PRD_MST_KWD)
+        FROM (
+            SELECT DISTINCT REPLACE(REPLACE(PRD_MST_KWD, ',', ''), '#', '') AS PRD_MST_KWD
+            FROM WT_PRD_MST
+            MODEL 
+                RETURN UPDATED ROWS
+                PARTITION BY (ROWNUM RN)
+                DIMENSION BY (0 POSITION)
+                MEASURES (PRD_MST_KWD, NVL(LENGTH(REGEXP_REPLACE(PRD_MST_KWD, '[^,]+', '')), 0) + 1 NB_MOT)
+                RULES (PRD_MST_KWD[FOR POSITION FROM 1 TO NB_MOT[0] INCREMENT 1] = REGEXP_SUBSTR(PRD_MST_KWD[0], '[^,]+', 1, CV(POSITION)))
+        ) S1
+        <include refid="curationDisplayKeywordWhere"/>
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 큐레이션 관리 > 키워드 검색 > 목록 -->
+    <select id="selectCurationDisplayKeywordList" parameterType="HashMap" resultType="HashMap">
+        /* CurationDisplay.selectCurationDisplayKeywordList */
+        WITH WT_PRD_MST AS (
+            SELECT DISTINCT PRD_MST_KWD
+            FROM C_PRD_MST
+            WHERE PRD_MST_KWD IS NOT NULL
+                AND PRD_MST_KWD <![CDATA[<>]]> ' '
+        )
+        SELECT S2.*
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT PRD_MST_KWD
+                FROM (
+                    SELECT DISTINCT TRIM(REPLACE(PRD_MST_KWD, '#', '')) AS PRD_MST_KWD
+                    FROM WT_PRD_MST
+                    MODEL 
+                        RETURN UPDATED ROWS
+                        PARTITION BY (ROWNUM RN)
+                        DIMENSION BY (0 POSITION)
+                        MEASURES (PRD_MST_KWD, NVL(LENGTH(REGEXP_REPLACE(PRD_MST_KWD, '[^,]+', '')), 0) + 1 NB_MOT)
+                        RULES (PRD_MST_KWD[FOR POSITION FROM 1 TO NB_MOT[0] INCREMENT 1] = REGEXP_SUBSTR(PRD_MST_KWD[0], '[^,]+', 1, CV(POSITION)))
+                )
+                <include refid="curationDisplayKeywordWhere"/>
+                ORDER BY PRD_MST_KWD ASC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+</mapper>

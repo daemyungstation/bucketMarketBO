@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="VendorNoticeBoard">
+
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 조건절 -->
+    <sql id="vendorNoticeBoardWhere">
+        <where>
+            <if test="SCM_NTS_TOP_YN != null and SCM_NTS_TOP_YN != ''">
+                AND SCM_NTS_TOP_YN = #{SCM_NTS_TOP_YN}
+            </if>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND SCM_NTS_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="searchScmNtsTitleAndContents != null and searchScmNtsTitleAndContents !=''">
+                AND DBMS_LOB.INSTR(SCM_NTS_TITLE || SCM_NTS_CONTENTS, #{searchScmNtsTitleAndContents}) > 0
+            </if>
+            <if test="searchScmNtsUseYn != null and searchScmNtsUseYn !=''">
+                AND NVL(VDR_MST_IDX, #{searchVdrMstIdx} ) = #{searchVdrMstIdx}
+            </if>
+             <if test="searchScmNtsUseYn == null or searchScmNtsUseYn ==''">
+                <if test="searchVdrMstIdx != null and searchVdrMstIdx !=''">
+                    AND VDR_MST_IDX = #{searchVdrMstIdx} 
+                </if>
+            </if>
+            <if test="searchScmNtsUseYn != null and searchScmNtsUseYn != ''">
+                AND SCM_NTS_USE_YN = #{searchScmNtsUseYn}
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 목록 개수 -->
+    <select id="selectVendorNoticeBoardListCount" parameterType="HashMap" resultType="Integer">
+        /* VendorNoticeBoard.selectVendorNoticeBoardListCount */
+        SELECT COUNT(SCM_NTS_IDX)
+        FROM T_SCM_NTS
+        <include refid="vendorNoticeBoardWhere"/>
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 목록 -->
+    <select id="selectVendorNoticeBoardList" parameterType="HashMap" resultType="HashMap">
+        /* VendorNoticeBoard.selectVendorNoticeBoardList */
+        SELECT
+            RNUM,
+            SCM_NTS_IDX,
+            SCM_NTS_TOP_YN,
+            VDR_MST_IDX,
+            (SELECT VDR_MST_NM FROM T_VDR_MST WHERE VDR_MST_IDX = S2.VDR_MST_IDX) AS VDR_MST_NM,
+            SCM_NTS_TITLE,
+            NVL(SCM_NTS_READ_CNT, 0) AS SCM_NTS_READ_CNT,
+            SCM_NTS_USE_YN,
+            SCM_NTS_REG_DT,
+            SCM_NTS_REG_IP,
+            SCM_NTS_REG_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = S2.SCM_NTS_REG_ID) AS SCM_NTS_REG_NM
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    SCM_NTS_IDX,
+                    SCM_NTS_TOP_YN,
+                    VDR_MST_IDX,
+                    SCM_NTS_TITLE,
+                    SCM_NTS_READ_CNT,
+                    SCM_NTS_USE_YN,
+                    SCM_NTS_REG_DT,
+                    SCM_NTS_REG_IP,
+                    SCM_NTS_REG_ID
+                FROM T_SCM_NTS 
+                <include refid="vendorNoticeBoardWhere"/>
+                ORDER BY SCM_NTS_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 상세정보  -->
+    <resultMap id="resultVendorNoticeBoardInfo" type="HashMap">
+        <result property="SCM_NTS_IDX" column="SCM_NTS_IDX"/>
+        <result property="SCM_NTS_TOP_YN" column="SCM_NTS_TOP_YN"/>
+        <result property="VDR_MST_IDX" column="VDR_MST_IDX"/>
+        <result property="VDR_MST_NM" column="VDR_MST_NM"/>
+        <result property="SCM_NTS_TITLE" column="SCM_NTS_TITLE"/>
+        <result property="SCM_NTS_CONTENTS" column="SCM_NTS_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="SCM_NTS_READ_CNT" column="SCM_NTS_READ_CNT"/>
+        <result property="SCM_NTS_USE_YN" column="SCM_NTS_USE_YN"/>
+        <result property="SCM_NTS_REG_DT" column="SCM_NTS_REG_DT"/>
+        <result property="SCM_NTS_REG_IP" column="SCM_NTS_REG_IP"/>
+        <result property="SCM_NTS_REG_ID" column="SCM_NTS_REG_ID"/>
+        <result property="SCM_NTS_REG_NM" column="SCM_NTS_REG_NM"/>
+        <result property="SCM_NTS_UPD_DT" column="SCM_NTS_UPD_DT"/>
+        <result property="SCM_NTS_UPD_IP" column="SCM_NTS_UPD_IP"/>
+        <result property="SCM_NTS_UPD_ID" column="SCM_NTS_UPD_ID"/>
+        <result property="SCM_NTS_UPD_NM" column="SCM_NTS_UPD_NM"/>
+    </resultMap>
+    <select id="selectVendorNoticeBoardInfo" parameterType="HashMap" resultMap="resultVendorNoticeBoardInfo">
+        /* VendorNoticeBoard.selectVendorNoticeBoardInfo */
+        SELECT
+            SN.SCM_NTS_IDX,
+            SN.SCM_NTS_TOP_YN,
+            SN.VDR_MST_IDX,
+            (SELECT VDR_MST_NM FROM T_VDR_MST WHERE VDR_MST_IDX = SN.VDR_MST_IDX) AS VDR_MST_NM,
+            SN.SCM_NTS_TITLE,
+            SN.SCM_NTS_CONTENTS,
+            NVL(SN.SCM_NTS_READ_CNT, 0) AS SCM_NTS_READ_CNT,
+            SN.SCM_NTS_USE_YN,
+            SN.SCM_NTS_REG_DT,
+            SN.SCM_NTS_REG_IP,
+            SN.SCM_NTS_REG_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = SN.SCM_NTS_REG_ID) AS SCM_NTS_REG_NM,
+            SN.SCM_NTS_UPD_DT,
+            SN.SCM_NTS_UPD_IP,
+            SN.SCM_NTS_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = SN.SCM_NTS_UPD_ID) AS SCM_NTS_UPD_NM
+        FROM T_SCM_NTS SN
+        WHERE SCM_NTS_IDX = #{SCM_NTS_IDX}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 등록 -->
+    <insert id="insertVendorNoticeBoard" parameterType="HashMap">
+        <selectKey keyProperty="SCM_NTS_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_SCM_NTS_IDX.NEXTVAL AS SCM_NTS_IDX FROM DUAL
+        </selectKey> 
+        /* VendorNoticeBoard.insertVendorNoticeBoard */
+        INSERT INTO T_SCM_NTS (
+            SCM_NTS_IDX,
+            SCM_NTS_TOP_YN,
+            VDR_MST_IDX,
+            SCM_NTS_TITLE,
+            SCM_NTS_CONTENTS,
+            SCM_NTS_READ_CNT,
+            SCM_NTS_USE_YN,
+            SCM_NTS_REG_DT,
+            SCM_NTS_REG_IP,
+            SCM_NTS_REG_ID
+        ) VALUES (
+            #{SCM_NTS_IDX},
+            NVL(#{SCM_NTS_TOP_YN}, 'N'),
+            #{VDR_MST_IDX},
+            #{SCM_NTS_TITLE},
+            #{SCM_NTS_CONTENTS:CLOB},
+            0,
+            NVL(#{SCM_NTS_USE_YN}, 'N'),
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{SCM_NTS_REG_IP},
+            #{SCM_NTS_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 수정 -->
+    <update id="updateVendorNoticeBoard" parameterType="HashMap">
+        /* VendorNoticeBoard.updateVendorNoticeBoard */
+        UPDATE T_SCM_NTS SET
+            SCM_NTS_TITLE = #{SCM_NTS_TITLE},
+            SCM_NTS_TOP_YN = NVL(#{SCM_NTS_TOP_YN}, 'N'),
+            SCM_NTS_CONTENTS = #{SCM_NTS_CONTENTS},
+            SCM_NTS_USE_YN = NVL(#{SCM_NTS_USE_YN}, 'N'),
+            SCM_NTS_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            SCM_NTS_UPD_IP = #{SCM_NTS_UPD_IP},
+            SCM_NTS_UPD_ID = #{SCM_NTS_UPD_ID}
+        WHERE SCM_NTS_IDX = #{SCM_NTS_IDX}
+    </update>
+    
+    <!-- 관리자 > 고객센터 > 제휴업체 공지사항 조회수 증가 -->
+    <update id="updateVendorNoticeReadCount" parameterType="HashMap">
+        /* VendorNoticeBoard.updateVendorNoticeReadCount */
+        UPDATE T_SCM_NTS SET
+            SCM_NTS_READ_CNT = (SELECT SCM_NTS_READ_CNT+1 FROM T_SCM_NTS WHERE SCM_NTS_IDX = #{SCM_NTS_IDX} )
+        WHERE SCM_NTS_IDX = #{SCM_NTS_IDX}
+    </update>
+    
+    <!-- 관리자 > 고객센터 > 상단공지 사용가능 여부 -->
+    <select id="selectVendorNoticeBoardTopCount" parameterType="HashMap" resultType="Integer">
+        /* VendorNoticeBoard.selectVendorNoticeBoardTopCount */
+        SELECT COUNT(SCM_NTS_IDX)
+        FROM T_SCM_NTS
+        WHERE SCM_NTS_TOP_YN = 'Y'
+            AND SCM_NTS_USE_YN = 'Y'
+            <if test="SCM_NTS_IDX != null and SCM_NTS_IDX != ''">
+                AND SCM_NTS_IDX <![CDATA[<>]]> #{SCM_NTS_IDX}
+            </if>
+    </select>
+</mapper>

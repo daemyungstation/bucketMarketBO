@@ -1,0 +1,695 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="BasicProduct">
+
+    <!-- 관리자 > 결합상품관리 > 조건절 -->
+    <sql id="productWhere">
+        <where>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND PRD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="searchVdrMstIdx != null and searchVdrMstIdx !=''">
+                AND VDR_MST_IDX = #{searchVdrMstIdx}
+            </if>
+            <if test="searchSupplyNm != null and searchSupplyNm != ''">
+                AND DBMS_LOB.INSTR( PRD_MST_SPL_NM, #{searchSupplyNm}) > 0
+            </if>
+            <if test="searchModelNm != null and searchModelNm != ''">
+                AND DBMS_LOB.INSTR(PRD_MST_MD, #{searchModelNm}) > 0
+            </if>     
+            <if test="searchApvState != null and searchApvState != ''">
+                <if test="searchApvState.equals(@common.code.Product@STATE_STOP)">
+                AND PRD_MST_APV_STATE IN ('N','R')
+                </if>
+                <if test="!searchApvState.equals(@common.code.Product@STATE_STOP)">
+                AND PRD_MST_APV_STATE = #{searchApvState}
+                </if>                
+            </if>
+        </where>
+    </sql>
+     <!-- 관리자 > 결합상품관리 > 상품 목록 개수 -->
+    <select id="selectBasicProductListCount" parameterType="HashMap" resultType="Integer">
+        /* BasicProduct.selectBasicProductListCount */
+        SELECT COUNT(PRD_MST_CD)
+        FROM T_PRD_MST PM
+        <include refid="productWhere"/>
+    </select>
+   
+   <!-- 관리자 > 결합상품관리 > 상품 목록 -->
+    <select id="selectBasicProductList" parameterType="HashMap" resultType="HashMap">
+        /* BasicProduct.selectBasicProductList */
+        SELECT
+            RNUM,
+            PRD_MST_CD,
+            VDR_MST_IDX,
+            (SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = S2.VDR_MST_IDX) AS VDR_MST_NM,
+            PRD_MST_SPL_NM,
+            PRD_MST_MD,
+            PRD_MST_SPL_PRC,
+            PRD_MST_REG_DT,
+            PRD_MST_APV_DT,
+            PRD_MST_APV_STATE,
+            CASE 
+                WHEN PRD_MST_APV_STATE = '${@common.code.Product@STATE_DISAPPROVAL}' THEN '${@common.code.Product@STATE_DISAPPROVAL_NM}'
+                WHEN PRD_MST_APV_STATE = '${@common.code.Product@STATE_REJECT}' THEN '${@common.code.Product@STATE_REJECT_NM}'
+                WHEN PRD_MST_APV_STATE = '${@common.code.Product@STATE_APPROVAL}' THEN '${@common.code.Product@STATE_APPROVAL_NM}'
+                WHEN PRD_MST_APV_STATE = '${@common.code.Product@STATE_UNION}' THEN '${@common.code.Product@STATE_UNION_NM}'
+            END AS PRD_MST_APV_STATE_NM
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT              
+                    PRD_MST_CD,
+                    VDR_MST_IDX,
+                    PRD_MST_SPL_NM,
+                    PRD_MST_MD,
+                    PRD_MST_SPL_PRC,
+                    PRD_MST_REG_DT,
+                    PRD_MST_APV_DT,
+                    PRD_MST_APV_STATE
+                FROM T_PRD_MST
+                <include refid="productWhere"/>
+                    <if test="searchOrderBy != null and searchOrderBy !=''">  ORDER BY
+                        <choose>
+                            <when test="searchOrderBy.equals(@common.code.Product@REG_SORT)"> PRD_MST_REG_DT DESC </when>
+                            <when test="searchOrderBy.equals(@common.code.Product@UPD_SORT)"> PRD_MST_UPD_DT DESC </when>
+                            <when test="searchOrderBy.equals(@common.code.Product@APV_SORT)"> PRD_MST_APV_DT DESC </when>
+                            <when test="searchOrderBy.equals(@common.code.Product@UNI_SORT)"> PRD_MST_UNI_DT DESC </when>
+                            <otherwise> PRD_MST_CD DESC</otherwise>
+                        </choose> 
+                    </if>
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+   <!-- 관리자 > 결합상품관리 > 상품 목록 -->
+    <select id="selectBasicProductOption" parameterType="HashMap" resultType="HashMap">
+        /* BasicProduct.selectBasicProductOption */
+        SELECT 
+            PRD_MST_CD,
+            PRD_OPT_IDX,
+            PRD_OPT_DTL
+        FROM T_PRD_OPT
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+        ORDER BY PRD_OPT_IDX ASC
+    </select>    
+    
+   <!-- 관리자 > 결합상품관리 > 거절사유보기 -->
+    <select id="selectProductRejectInfo" parameterType="HashMap" resultType="HashMap">
+        /* BasicProduct.selectProductRejectInfo */
+        SELECT
+            PRD_MST_REG_DT,
+            PRD_MST_SPL_NM,
+            PRD_MST_MD,
+            PRD_MST_SPL_PRC,
+            PRD_MST_APV_STATE,
+            PRD_MST_RFS_RSN,
+            PRD_MST_APV_ID,
+            PRD_MST_APV_DT,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_APV_ID) AS PRD_MST_APV_NM
+        FROM T_PRD_MST PM
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </select>
+
+    <!-- 관리자 > 결합상품관리 > 승인하기 -->
+    <update id="updateProductApproval" parameterType="HashMap">
+        /* BasicProduct.updateProductApproval */
+        UPDATE T_PRD_MST SET
+            PRD_MST_APV_STATE = NVL(#{PRD_MST_APV_STATE}, '${@common.code.Product@STATE_APPROVAL}'),
+            PRD_MST_APV_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_MST_APV_ID = #{PRD_MST_APV_ID},
+            PRD_MST_APV_IP = #{PRD_MST_APV_IP}
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </update>  
+    
+    <!-- 상품스펙 마스터 채번 -->
+    <select id="selectProductCd" parameterType="hashMap" resultType="String">
+        /* BasicProduct.selectProductCd */
+        SELECT '${@common.code.Product@PRD_CD}' || TO_CHAR(SYSDATE, 'YYYYMMDD') || LPAD(SEQ_PRD_MST_CD.NEXTVAL ,4,'0')
+        FROM DUAL
+    </select> 
+    
+    <!-- 결합상품마스터 채번 -->
+    <select id="selectProductNo" parameterType="hashMap" resultType="String">
+        /* BasicProduct.selectProductNo */
+        SELECT #{PRD_MST_CD} || LPAD(SEQ_PRD_MST_CD.NEXTVAL ,4,'0')
+        FROM DUAL
+    </select>     
+    
+    <!-- 관리자 > 결합상품관리 > 미승인상품등록 -->
+    <insert id="insertProductDisapproval" parameterType="HashMap">
+        /* BasicProduct.insertProductDisapproval */
+        INSERT INTO T_PRD_MST (
+            PRD_MST_CD,
+            VDR_MST_IDX,
+            PRD_MST_SPL_NM,
+            PRD_MST_MD,
+            PRD_MST_SPL_PRC,
+            PRD_MST_OPT_YN,
+            PRD_MST_OPT_NM,
+            PRD_MST_APV_STATE,
+            PRD_MST_RDP_TXT,
+            PRD_MST_NTC_DSC,
+            PRD_MST_DLV_DSC,
+            PRD_MST_PC_YTB,
+            PRD_MST_MB_YTB,
+            PRD_MST_PC_DTL_DSC,
+            PRD_MST_MB_DTL_DSC,
+            PRD_MST_NFI_IDX,
+            PRD_MST_NFI_INF1,
+            PRD_MST_NFI_INF2,
+            PRD_MST_NFI_INF3,
+            PRD_MST_NFI_INF4,
+            PRD_MST_NFI_INF5,
+            PRD_MST_NFI_INF6,
+            PRD_MST_NFI_INF7,
+            PRD_MST_NFI_INF8,
+            PRD_MST_NFI_INF9,
+            PRD_MST_NFI_INF10,
+            PRD_MST_NFI_INF11,
+            PRD_MST_NFI_INF12,
+            PRD_MST_NFI_INF13,
+            PRD_MST_NFI_INF14,
+            PRD_MST_REG_DT,
+            PRD_MST_REG_IP,
+            PRD_MST_REG_ID
+        ) VALUES(
+            #{PRD_MST_CD},
+            #{VDR_MST_IDX},
+            #{PRD_MST_SPL_NM},
+            #{PRD_MST_MD},
+            NVL(#{PRD_MST_SPL_PRC}, 0),
+            #{PRD_MST_OPT_YN},
+            #{PRD_MST_OPT_NM},
+            '${@common.code.Product@STATE_DISAPPROVAL}',
+            #{PRD_MST_RDP_TXT},
+            #{PRD_MST_NTC_DSC},
+            #{PRD_MST_DLV_DSC},
+            #{PRD_MST_PC_YTB},
+            #{PRD_MST_MB_YTB},
+            #{PRD_MST_PC_DTL_DSC},
+            #{PRD_MST_MB_DTL_DSC},
+            #{PRD_MST_NFI_IDX},
+            #{PRD_MST_NFI_INF1},
+            #{PRD_MST_NFI_INF2},
+            #{PRD_MST_NFI_INF3},
+            #{PRD_MST_NFI_INF4},
+            #{PRD_MST_NFI_INF5},
+            #{PRD_MST_NFI_INF6},
+            #{PRD_MST_NFI_INF7},
+            #{PRD_MST_NFI_INF8},
+            #{PRD_MST_NFI_INF9},
+            #{PRD_MST_NFI_INF10},
+            #{PRD_MST_NFI_INF11},
+            #{PRD_MST_NFI_INF12},
+            #{PRD_MST_NFI_INF13},
+            #{PRD_MST_NFI_INF14},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{PRD_MST_REG_IP},
+            #{PRD_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 결합상품관리 > 미승인상품옵션등록 -->
+    <insert id="insertProductOption" parameterType="HashMap">
+        /* BasicProduct.insertProductOption */
+        INSERT INTO T_PRD_OPT (
+            PRD_OPT_IDX,
+            PRD_MST_CD,
+            PRD_OPT_DTL
+        ) VALUES(
+            SEQ_PRD_OPT_IDX.NEXTVAL,
+            #{PRD_MST_CD},
+            #{PRD_OPT_DTL}
+        )
+    </insert>
+    
+    <!-- 관리자 > 결합상품관리 > 미승인상품옵션수정 -->
+    <update id="updateProductOption" parameterType="HashMap">
+        /* BasicProduct.updateProductOption */
+        UPDATE T_PRD_OPT SET
+            PRD_OPT_DTL = #{PRD_OPT_DTL}
+        WHERE PRD_OPT_IDX = #{PRD_OPT_IDX}
+    </update>
+    
+    <!-- 관리자 > 결합상품관리 > 미승인상품옵션삭제 -->
+    <delete id="deleteProductOption" parameterType="HashMap">
+        /* BasicProduct.deleteProductOption */
+        DELETE FROM T_PRD_OPT WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </delete>
+    
+    <!-- 관리자 > 상품관리 > 상품상세 -->
+    <resultMap id="resultProductInfo" type="HashMap">
+        <result property="PRD_MST_CD" column="PRD_MST_CD"/>
+        <result property="VDR_MST_IDX" column="VDR_MST_IDX"/>
+        <result property="VDR_MST_NM" column="VDR_MST_NM"/>
+        <result property="PRD_MST_SPL_NM" column="PRD_MST_SPL_NM"/>
+        <result property="PRD_MST_MD" column="PRD_MST_MD"/>
+        <result property="PRD_MST_SPL_PRC" column="PRD_MST_SPL_PRC"/>
+        <result property="PRD_MST_OPT_YN" column="PRD_MST_OPT_YN"/>
+        <result property="PRD_MST_OPT_NM" column="PRD_MST_OPT_NM"/>
+        <result property="PRD_MST_APV_STATE" column="PRD_MST_APV_STATE"/>
+        <result property="PRD_MST_RFS_RSN" column="PRD_MST_RFS_RSN"/>
+        <result property="PRD_MST_NTC_DSC" column="PRD_MST_NTC_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_PC_YTB" column="PRD_MST_PC_YTB" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_MB_YTB" column="PRD_MST_MB_YTB" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_DLV_DSC" column="PRD_MST_DLV_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_PC_DTL_DSC" column="PRD_MST_PC_DTL_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_MB_DTL_DSC" column="PRD_MST_MB_DTL_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_MST_NFI_IDX" column="PRD_MST_NFI_IDX"/>
+        <result property="PRD_MST_NFI_INF1" column="PRD_MST_NFI_INF1"/>
+        <result property="PRD_MST_NFI_INF2" column="PRD_MST_NFI_INF2"/>
+        <result property="PRD_MST_NFI_INF3" column="PRD_MST_NFI_INF3"/>
+        <result property="PRD_MST_NFI_INF4" column="PRD_MST_NFI_INF4"/>
+        <result property="PRD_MST_NFI_INF5" column="PRD_MST_NFI_INF5"/>
+        <result property="PRD_MST_NFI_INF6" column="PRD_MST_NFI_INF6"/>
+        <result property="PRD_MST_NFI_INF7" column="PRD_MST_NFI_INF7"/>
+        <result property="PRD_MST_NFI_INF8" column="PRD_MST_NFI_INF8"/>
+        <result property="PRD_MST_NFI_INF9" column="PRD_MST_NFI_INF9"/>
+        <result property="PRD_MST_NFI_INF10" column="PRD_MST_NFI_INF10"/>
+        <result property="PRD_MST_NFI_INF11" column="PRD_MST_NFI_INF11"/>
+        <result property="PRD_MST_NFI_INF12" column="PRD_MST_NFI_INF12"/>
+        <result property="PRD_MST_NFI_INF13" column="PRD_MST_NFI_INF13"/>
+        <result property="PRD_MST_NFI_INF14" column="PRD_MST_NFI_INF14"/>
+        <result property="PRD_MST_RDP_TXT" column="PRD_MST_RDP_TXT"/>
+        <result property="PRD_MST_REG_DT" column="PRD_MST_REG_DT"/>
+        <result property="PRD_MST_REG_IP" column="PRD_MST_REG_IP"/>
+        <result property="PRD_MST_REG_ID" column="PRD_MST_REG_ID"/>
+        <result property="PRD_MST_REG_NM" column="PRD_MST_REG_NM"/>
+        <result property="PRD_MST_UPD_DT" column="PRD_MST_UPD_DT"/>
+        <result property="PRD_MST_UPD_IP" column="PRD_MST_UPD_IP"/>
+        <result property="PRD_MST_UPD_ID" column="PRD_MST_UPD_ID"/>
+        <result property="PRD_MST_UPD_NM" column="PRD_MST_UPD_NM"/>
+        <result property="PRD_MST_APV_DT" column="PRD_MST_APV_DT"/>
+        <result property="PRD_MST_APV_IP" column="PRD_MST_APV_IP"/>
+        <result property="PRD_MST_APV_ID" column="PRD_MST_APV_ID"/>
+        <result property="PRD_MST_APV_NM" column="PRD_MST_APV_NM"/>        
+    </resultMap>
+    <select id="selectBasicProductInfo" parameterType="HashMap" resultMap="resultProductInfo">
+        /* BasicProduct.selectBasicProductInfo */
+        SELECT 
+            PRD_MST_CD,
+            VDR_MST_IDX,
+            (SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = PM.VDR_MST_IDX) AS VDR_MST_NM,
+            PRD_MST_SPL_NM,
+            PRD_MST_MD,
+            PRD_MST_SPL_PRC,
+            PRD_MST_OPT_YN,
+            PRD_MST_OPT_NM,
+            PRD_MST_APV_STATE,
+            PRD_MST_RFS_RSN,
+            PRD_MST_NTC_DSC,
+            PRD_MST_PC_YTB,
+            PRD_MST_MB_YTB,
+            PRD_MST_DLV_DSC,
+            PRD_MST_PC_DTL_DSC,
+            PRD_MST_MB_DTL_DSC,
+            PRD_MST_NFI_IDX,
+            PRD_MST_NFI_INF1,
+            PRD_MST_NFI_INF2,
+            PRD_MST_NFI_INF3,
+            PRD_MST_NFI_INF4,
+            PRD_MST_NFI_INF5,
+            PRD_MST_NFI_INF6,
+            PRD_MST_NFI_INF7,
+            PRD_MST_NFI_INF8,
+            PRD_MST_NFI_INF9,
+            PRD_MST_NFI_INF10,
+            PRD_MST_NFI_INF11,
+            PRD_MST_NFI_INF12,
+            PRD_MST_NFI_INF13,
+            PRD_MST_NFI_INF14,
+            PRD_MST_RDP_TXT,
+            PRD_MST_REG_DT,
+            PRD_MST_REG_IP,
+            PRD_MST_REG_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_REG_ID) AS PRD_MST_REG_NM,
+            PRD_MST_UPD_DT,
+            PRD_MST_UPD_IP,
+            PRD_MST_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_UPD_ID) AS PRD_MST_UPD_NM,
+            PRD_MST_APV_DT,
+            PRD_MST_APV_IP,
+            PRD_MST_APV_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_APV_ID) AS PRD_MST_APV_NM            
+        FROM T_PRD_MST PM
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </select> 
+    
+    <!-- 관리자 > 결합상품관리 > 상품업데이트 -->
+    <update id="updateProductDisapproval" parameterType="HashMap">
+    /* BasicProduct.updateProductDisapproval */
+        UPDATE T_PRD_MST SET
+            <if test="PRD_MST_SPL_NM != null and PRD_MST_SPL_NM != ''"> 
+                PRD_MST_SPL_NM = #{PRD_MST_SPL_NM},
+            </if>
+            <if test="PRD_MST_MD != null and PRD_MST_MD != ''">
+                PRD_MST_MD = #{PRD_MST_MD},
+            </if>
+            <if test="PRD_MST_SPL_PRC != null and PRD_MST_SPL_PRC != ''">
+                PRD_MST_SPL_PRC = #{PRD_MST_SPL_PRC},
+            </if>
+            <if test="PRD_MST_OPT_YN != null and PRD_MST_OPT_YN != ''">
+                PRD_MST_OPT_YN = #{PRD_MST_OPT_YN},
+            </if>
+            <if test="PRD_MST_OPT_NM != null and PRD_MST_OPT_NM != ''">
+                PRD_MST_OPT_NM = #{PRD_MST_OPT_NM},
+            </if>
+            <if test="PRD_MST_APV_STATE != null and PRD_MST_APV_STATE != ''">            
+                PRD_MST_APV_STATE = #{PRD_MST_APV_STATE},
+            </if> 
+            <if test="PRD_MST_RFS_RSN != null and PRD_MST_RFS_RSN != ''">
+                PRD_MST_RFS_RSN = #{PRD_MST_RFS_RSN},
+            </if>
+            PRD_MST_RDP_TXT = #{PRD_MST_RDP_TXT},
+            PRD_MST_NTC_DSC = #{PRD_MST_NTC_DSC},
+            PRD_MST_DLV_DSC = #{PRD_MST_DLV_DSC},
+            PRD_MST_PC_YTB = #{PRD_MST_PC_YTB},
+            PRD_MST_MB_YTB = #{PRD_MST_MB_YTB},
+            PRD_MST_PC_DTL_DSC = #{PRD_MST_PC_DTL_DSC},
+            PRD_MST_MB_DTL_DSC = #{PRD_MST_MB_DTL_DSC},
+            PRD_MST_NFI_IDX = #{PRD_MST_NFI_IDX},
+            PRD_MST_NFI_INF1 = #{PRD_MST_NFI_INF1},
+            PRD_MST_NFI_INF2 = #{PRD_MST_NFI_INF2},
+            PRD_MST_NFI_INF3 = #{PRD_MST_NFI_INF3},
+            PRD_MST_NFI_INF4 = #{PRD_MST_NFI_INF4},
+            PRD_MST_NFI_INF5 = #{PRD_MST_NFI_INF5},
+            PRD_MST_NFI_INF6 = #{PRD_MST_NFI_INF6},
+            PRD_MST_NFI_INF7 = #{PRD_MST_NFI_INF7},
+            PRD_MST_NFI_INF8 = #{PRD_MST_NFI_INF8},
+            PRD_MST_NFI_INF9 = #{PRD_MST_NFI_INF9},
+            PRD_MST_NFI_INF10 = #{PRD_MST_NFI_INF10},
+            PRD_MST_NFI_INF11 = #{PRD_MST_NFI_INF11},
+            PRD_MST_NFI_INF12 = #{PRD_MST_NFI_INF12},
+            PRD_MST_NFI_INF13 = #{PRD_MST_NFI_INF13},
+            PRD_MST_NFI_INF14 = #{PRD_MST_NFI_INF14},
+            <if test="PRD_MST_APV_ID != null and PRD_MST_APV_ID != ''">  
+                PRD_MST_APV_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                PRD_MST_APV_ID = #{PRD_MST_APV_ID},
+                PRD_MST_APV_IP = #{PRD_MST_APV_IP},
+            </if>        
+            PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_MST_UPD_ID = #{PRD_MST_UPD_ID},
+            PRD_MST_UPD_IP = #{PRD_MST_UPD_IP}                
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </update>   
+
+    <!-- 관리자 > 결합상품관리 > 재승인요청 -->
+    <update id="updateProductApprovalRequest" parameterType="HashMap">
+        /* BasicProduct.updateProductApprovalRequest */
+        UPDATE T_PRD_MST SET
+            PRD_MST_APV_STATE = '${@common.code.Product@STATE_DISAPPROVAL}',
+            PRD_MST_RFS_RSN = NULL,
+            PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_MST_UPD_ID = #{PRD_MST_UPD_ID},
+            PRD_MST_UPD_IP = #{PRD_MST_UPD_IP},
+            PRD_MST_APV_DT = NULL,
+            PRD_MST_APV_ID = NULL,
+            PRD_MST_APV_IP = NULL            
+        WHERE PRD_MST_CD = #{PRD_MST_CD}
+    </update>  
+    
+    <!-- 관리자 > 상품관리 > 결합상품상세 -->
+    <select id="selectUnionProductInfo" parameterType="HashMap" resultType="HashMap">
+        /* BasicProduct.selectUnionProductInfo */
+        SELECT 
+            PRD_MST_NO,
+            PRD_MST_CD,
+            (SELECT PRD_CTG_UP_IDX FROM T_PRD_CTG PC WHERE PC.PRD_CTG_IDX = CPM.PRD_CTG_IDX) AS PRD_CTG_IDX1,
+            PRD_CTG_IDX AS PRD_CTG_IDX2,
+            PRD_CTG_IDX,
+            CPM.PROD_CD,
+            CPM.PROD_KIND,
+            CPM.MODEL_CD,
+            MODEL_CL_NM,
+            PROD_AMT,
+            MON_PAY_AMT,
+            EXPR_NO,
+            REL_AMT,
+            REL_CNT,
+            PRD_MST_NM,
+            PRD_MST_SEL_TXT,
+            PRD_MST_ST_DT,
+            PRD_MST_ED_DT,
+            PRD_MST_KWD,
+            PRD_MST_DPL_YN,
+            PRD_MST_QNA_YN,
+            PRD_MST_REV_YN,
+            PRD_MST_TYPE,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = PRD_MST_TYPE) AS PRD_MST_TYPE_NM,
+            PRD_MST_BND_YN,
+            PRD_MST_BND_ID,
+            PRD_MST_JOIN_LMT,
+            PRD_MST_MAIN_CTRT,
+            PRD_MST_SPT_TXT,
+            PRD_MST_RTL_PAY,
+            PRD_MST_ISTM_MTH,
+            PRD_MST_ISTM_SPT_PAY,
+            PRD_MST_DSP_SVC,
+            PRD_MST_RLT_YN,
+            PRD_MST_SRT,
+            PRD_MST_DEL_YN,
+            PRD_MST_HITS,
+            PRD_MST_CMS_CD,
+            PRD_MST_RDP_CMS_CD,
+            PRD_MST_RDP_CMS,
+            PRD_MST_RDP_DVD_PAY,
+            PRD_MST_RDP_DVD_CNT,
+            PRD_MST_IRG_YN,
+            PRD_MST_PAY_CNT1,
+            PRD_MST_PAY_AMT1,
+            PRD_MST_PAY_CNT2,
+            PRD_MST_PAY_AMT2,
+            PRD_MST_PAY_CNT3,
+            PRD_MST_PAY_AMT3,
+            CPM.PRD_MST_REG_DT,
+            PRD_MST_REG_IP,
+            PRD_MST_REG_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_REG_ID) AS PRD_MST_REG_NM,
+            CPM.PRD_MST_UPD_DT,
+            PRD_MST_UPD_IP,
+            PRD_MST_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_MST_UPD_ID) AS PRD_MST_UPD_NM
+        FROM C_PRD_MST CPM, V_PRD_MST VPM
+        WHERE CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND PRD_MST_NO = #{PRD_MST_NO}
+    </select>
+    
+    <!-- 관리자 > 결합상품관리 > 결합상품등록 -->
+    <insert id="insertProductUnion" parameterType="HashMap">
+        /* BasicProduct.insertProductUnion */
+        INSERT INTO C_PRD_MST (
+            PRD_MST_NO,
+            PRD_MST_CD,
+            PRD_CTG_IDX,
+            PROD_CD,
+            PROD_KIND,
+            MODEL_CD,
+            PRD_MST_NM,
+            PRD_MST_SEL_TXT,
+            PRD_MST_ST_DT,
+            PRD_MST_ED_DT,
+            PRD_MST_KWD,
+            PRD_MST_DPL_YN,
+            PRD_MST_QNA_YN,
+            PRD_MST_REV_YN,
+            PRD_MST_TYPE,
+            PRD_MST_BND_YN,
+            PRD_MST_BND_ID,
+            PRD_MST_JOIN_LMT,
+            PRD_MST_MAIN_CTRT,
+            PRD_MST_SPT_TXT,
+            PRD_MST_RTL_PAY,
+            PRD_MST_ISTM_MTH,
+            PRD_MST_ISTM_SPT_PAY,
+            PRD_MST_DSP_SVC,
+            PRD_MST_RLT_YN,
+            PRD_MST_SRT,
+            PRD_MST_DEL_YN,
+            PRD_MST_HITS,
+            PRD_MST_CMS_CD,
+            PRD_MST_RDP_CMS_CD,
+            PRD_MST_RDP_CMS,
+            PRD_MST_RDP_DVD_PAY,
+            PRD_MST_RDP_DVD_CNT,
+            PRD_MST_IRG_YN,
+            PRD_MST_PAY_CNT1,
+            PRD_MST_PAY_AMT1,
+            PRD_MST_PAY_CNT2,
+            PRD_MST_PAY_AMT2,
+            PRD_MST_PAY_CNT3,
+            PRD_MST_PAY_AMT3,
+            PRD_MST_REG_DT,
+            PRD_MST_REG_IP,
+            PRD_MST_REG_ID
+        ) VALUES(
+            #{PRD_MST_NO},
+            #{PRD_MST_CD},
+            #{PRD_CTG_IDX},
+            #{PROD_CD},
+            #{PROD_KIND},
+            #{MODEL_CD},            
+            #{PRD_MST_NM},
+            #{PRD_MST_SEL_TXT},
+            REPLACE(#{PRD_MST_ST_DT},'-', ''),
+            REPLACE(#{PRD_MST_ED_DT},'-', ''),
+            #{PRD_MST_KWD},
+            #{PRD_MST_DPL_YN},
+            #{PRD_MST_QNA_YN},
+            #{PRD_MST_REV_YN},
+            #{PRD_MST_TYPE},
+            #{PRD_MST_BND_YN},
+            #{PRD_MST_BND_ID},
+            #{PRD_MST_JOIN_LMT},
+            #{PRD_MST_MAIN_CTRT},
+            #{PRD_MST_SPT_TXT},
+            #{PRD_MST_RTL_PAY},
+            #{PRD_MST_ISTM_MTH},
+            #{PRD_MST_ISTM_SPT_PAY},
+            #{PRD_MST_DSP_SVC},
+            #{PRD_MST_RLT_YN},
+            #{PRD_MST_SRT},
+            NVL(#{PRD_MST_DEL_YN}, 'N'),
+            0,
+            #{PRD_MST_CMS_CD},
+            #{PRD_MST_RDP_CMS_CD},
+            #{PRD_MST_RDP_CMS},
+            #{PRD_MST_RDP_DVD_PAY},
+            #{PRD_MST_RDP_DVD_CNT},
+            #{PRD_MST_IRG_YN},
+            #{PRD_MST_PAY_CNT1},
+            #{PRD_MST_PAY_AMT1},
+            #{PRD_MST_PAY_CNT2},
+            #{PRD_MST_PAY_AMT2},
+            #{PRD_MST_PAY_CNT3},
+            #{PRD_MST_PAY_AMT3},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{PRD_MST_REG_IP},
+            #{PRD_MST_REG_ID}
+        )
+    </insert>
+
+    <!-- 관리자 > 결합상품관리 > 결합 관련 상품등록 -->
+    <insert id="insertRelatedProduct" parameterType="HashMap">
+        /* BasicProduct.insertRelatedProduct */
+        <selectKey keyProperty="PRD_RLT_IDX" keyColumn="PRD_RLT_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_PRD_RLT_IDX.NEXTVAL AS PRD_RLT_IDX FROM DUAL
+        </selectKey>
+        INSERT INTO T_PRD_RLT (
+            PRD_RLT_IDX,
+            PRD_MST_NO,
+            PRD_RLT_MST_NO
+        ) VALUES(
+            #{PRD_RLT_IDX},
+            #{PRD_MST_NO},
+            #{PRD_RLT_MST_NO}
+        )
+    </insert>
+
+    <!-- 관리자 > 결합상품관리 > 결합관련상품삭제 -->
+    <delete id="deleteRelatedProduct" parameterType="HashMap">
+        /* BasicProduct.deleteProductOption */
+        DELETE FROM T_PRD_RLT WHERE PRD_MST_NO = #{PRD_MST_NO}
+    </delete>
+
+    <!-- 관리자 > 결합상품관리 > 결합 관련 상품등록 -->
+    <select id="selectRelatedProduct" parameterType="HashMap" resultType="HashMap">
+        /* BasicProduct.selectRelatedProduct */
+        SELECT 
+            CPM.PRD_MST_NO,
+            CPM.PRD_MST_TYPE,
+            CPM.PRD_MST_NM,
+            VPM.PROD_AMT,
+            VPM.PROD_CD,
+            VPM.MODEL_CL_NM,
+            VPM.MODEL_NM,
+            TPM.PRD_MST_SPL_NM,
+            TPM.PRD_MST_MD,
+            CPM.PRD_MST_DPL_YN,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = PRD_MST_TYPE) AS PRD_MST_TYPE_NM,
+            CASE 
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_SHOW}' THEN '${@common.code.Product@DISPLAY_SHOW_NM}'
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_HIDE}' THEN '${@common.code.Product@DISPLAY_HIDE_NM}'
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_SOLDOUT}' THEN '${@common.code.Product@DISPLAY_SOLDOUT_NM}'
+            END AS PRD_MST_DPL_TXT
+        FROM T_PRD_MST TPM, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_RLT TPR
+        WHERE TPM.PRD_MST_CD = CPM.PRD_MST_CD
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND TPR.PRD_MST_NO = #{PRD_MST_NO}
+        AND TPR.PRD_RLT_MST_NO = CPM.PRD_MST_NO
+        ORDER BY TPR.PRD_RLT_IDX ASC
+    </select> 
+    
+    <!-- 관리자 > 결합상품관리 > 결합상품업데이트 -->
+    <update id="updateProductUnion" parameterType="HashMap">
+    /* BasicProduct.updateProductUnion */
+        UPDATE C_PRD_MST SET
+            <if test="PRD_MST_NM != null and PRD_MST_NM != ''">
+                PRD_MST_NM = #{PRD_MST_NM},
+            </if>
+                PRD_CTG_IDX = #{PRD_CTG_IDX},
+            <if test="PRD_MST_SEL_TXT != null and PRD_MST_SEL_TXT != ''">
+                PRD_MST_SEL_TXT = #{PRD_MST_SEL_TXT},
+            </if>            
+            PRD_MST_ST_DT = REPLACE(#{PRD_MST_ST_DT},'-', ''),
+            PRD_MST_ED_DT = REPLACE(#{PRD_MST_ED_DT},'-', ''),
+            <if test="PRD_MST_KWD != null and PRD_MST_KWD != ''">
+                PRD_MST_KWD = #{PRD_MST_KWD},
+            </if>            
+            PRD_MST_DPL_YN = #{PRD_MST_DPL_YN},
+            PRD_MST_QNA_YN = #{PRD_MST_QNA_YN},
+            PRD_MST_REV_YN = #{PRD_MST_REV_YN},
+            PRD_MST_JOIN_LMT = #{PRD_MST_JOIN_LMT},
+            <if test="PRD_MST_DSP_SVC != null and PRD_MST_DSP_SVC != ''">
+                PRD_MST_DSP_SVC = #{PRD_MST_DSP_SVC}, 
+            </if>
+            <if test="PRD_MST_SPT_TXT != null and PRD_MST_SPT_TXT != ''">
+                PRD_MST_SPT_TXT = #{PRD_MST_SPT_TXT}, 
+            </if>
+            <if test="PRD_MST_RTL_PAY != null and PRD_MST_RTL_PAY != ''">
+                PRD_MST_RTL_PAY = #{PRD_MST_RTL_PAY}, 
+            </if>
+            <if test="PRD_MST_MAIN_CTRT != null and PRD_MST_MAIN_CTRT != ''">
+                PRD_MST_MAIN_CTRT = #{PRD_MST_MAIN_CTRT}, 
+            </if>
+            <if test="PRD_MST_RDP_CMS != null and PRD_MST_RDP_CMS != ''">
+                PRD_MST_RDP_CMS = #{PRD_MST_RDP_CMS}, 
+            </if>
+            <if test="PRD_MST_RDP_DVD_PAY != null and PRD_MST_RDP_DVD_PAY != ''">
+                PRD_MST_RDP_DVD_PAY = #{PRD_MST_RDP_DVD_PAY}, 
+            </if>
+            <if test="PRD_MST_RDP_DVD_CNT != null and PRD_MST_RDP_DVD_CNT != ''">
+                PRD_MST_RDP_DVD_CNT = #{PRD_MST_RDP_DVD_CNT}, 
+            </if>
+            PRD_MST_RLT_YN = #{PRD_MST_RLT_YN},
+            PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_MST_UPD_ID = #{PRD_MST_UPD_ID},
+            PRD_MST_UPD_IP = #{PRD_MST_UPD_IP}                
+        WHERE PRD_MST_NO = #{PRD_MST_NO}
+    </update>
+    
+    <!-- 관리자 > 결합상품관리 > DLCC 마스터 상품업데이트 -->
+    <update id="updateDlccProductMaster" parameterType="HashMap">
+    /* BasicProduct.updateDlccProductMaster */
+        UPDATE V_PRD_MST SET
+            REL_AMT = #{REL_AMT},
+            REL_CNT = #{REL_CNT},
+            MON_REL_AMT =  TRUNC(#{REL_AMT}/#{REL_CNT}),
+            PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+        WHERE PROD_CD = #{PROD_CD}
+        AND PROD_KIND = #{PROD_KIND}
+        AND MODEL_CD = #{MODEL_CD}
+    </update>
+</mapper>

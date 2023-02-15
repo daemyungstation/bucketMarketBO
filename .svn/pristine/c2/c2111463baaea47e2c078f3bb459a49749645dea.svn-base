@@ -1,0 +1,71 @@
+package common.model;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+import common.code.LoginState;
+import lombok.Data;
+
+@Data
+public class Manager implements Serializable {
+    
+    private static final long serialVersionUID = 5443677591941871661L;
+
+    static public enum ROLE_MANAGER {
+        administrator, guest
+    }
+
+    static public Map<ROLE_MANAGER, Integer> levels = new HashMap<ROLE_MANAGER, Integer>();
+    static {
+        levels.put(ROLE_MANAGER.administrator, 99);
+        levels.put(ROLE_MANAGER.guest, 0);
+    }
+
+    // 로그인 상태 코드
+    int LOGIN_STATE_CODE = LoginState.LOGIN_FAIL;
+    // 관리자 아이디
+    String ADM_MST_ID = "";
+    // 관리자 이름
+    String ADM_MST_NM = "";
+    // 관리자 비밀번호
+    String ADM_MST_PWD = "";
+    // 관리자 핸드폰 번호 앞자리
+    String ADM_MST_HP1 = "";
+    // 관리자 핸드폰 번호 중간자리
+    String ADM_MST_HP2 = "";
+    // 관리자 핸드폰 번호 끝자리
+    String ADM_MST_HP3 = "";
+    // 관리자 전화번호 앞자리
+    int ADM_MST_TEL1 = 0;
+    // 관리자 전화번호 중간자리
+    int ADM_MST_TEL2 = 0;
+    // 관리자 전화번호 끝자리
+    String ADM_MST_TEL3 = "";
+    // 관리자 이메일 아이디
+    String ADM_MST_EMAIL_ID = "";
+    // 관리자 이메일 도메인
+    String ADM_MST_EMAIL_DOMAIN = "";
+    // 관리자 상태
+    String ADM_MST_STATE = "N";
+    // 관리자 권한 IDX
+    int AUT_MST_IDX = 0;
+    // 권한구분 
+    String AUT_MST_VDR_YN = "N";
+    // 관리자 입점_업체 IDX
+    int ADM_MST_SUB_IDX = 0;
+    // 입점업체 명
+    String VDR_MST_NM = "";
+    // 로그인 이력 IDX
+    int ADM_MST_HISTORY_IDX = 0;
+    // 이차 인증번호 (local, dev 환경에서만 사용)
+    String ADM_MST_RND = "";
+    // 제휴업체 약관 동의일
+    String VDR_MST_AGR_DT = "";
+    // 로그인 아이디 저장 유무
+    String SAVE_ID = "";
+    // 제휴업체 아이피 제한여부
+    String VDR_MST_LMT_YN = "";
+    // 제휴업체 제한 아이피
+    String VDR_MST_LMT_IP = "";
+}

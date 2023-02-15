@@ -1,0 +1,826 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="StatsJoinAnalysis">
+
+    <!-- 통계 조건절  -->
+    <sql id="statsJoinAnalysisWhere">
+        <if test="searchAgent != null and searchAgent != ''">
+            AND OM.ORD_MST_AGT = #{searchAgent}
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('Y'.toString())">
+            AND OD.RDP_MST_IDX IS NOT NULL
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('N'.toString())">
+            AND OD.RDP_MST_IDX IS NULL
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PM.PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchProdCd != null and searchProdCd != ''">
+            AND PM.PROD_CD  LIKE '%' || UPPER(#{searchProdCd}) || '%'
+        </if>
+        <if test="searchPrdCtgIdx != null and searchPrdCtgIdx != ''">
+            AND PM.PRD_CTG_IDX = #{searchPrdCtgIdx}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 성별 -->
+    <select id="selectStatsJoinAnalysisSexList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisSexList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY, MALE_R, FEMALE_R, MALE_W, FEMALE_W, MALE_J, FEMALE_J, MALE_C, FEMALE_C
+        FROM (
+            SELECT 
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(MALE_R),0) AS MALE_R,
+                NVL(SUM(FEMALE_R),0) AS FEMALE_R, 
+                NVL(SUM(MALE_W),0) AS MALE_W,
+                NVL(SUM(FEMALE_W),0) AS FEMALE_W,
+                NVL(SUM(MALE_J),0) AS MALE_J,
+                NVL(SUM(FEMALE_J),0) AS FEMALE_J,
+                NVL(SUM(MALE_C),0) AS MALE_C,
+                NVL(SUM(FEMALE_C),0) AS FEMALE_C
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT 
+                        ORD_DT,
+                        MAX(DECODE(SEX, '${@common.code.Const@MAN}', CNT, 0)) AS MALE_R,
+                        MAX(DECODE(SEX, '${@common.code.Const@FEMALE}', CNT, 0)) AS FEMALE_R
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(ORD_MST_ORD_DT,0,8) AS ORD_DT,
+                            OD.SEX AS SEX
+                        FROM T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                            AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(ORD_MST_ORD_DT,0,8), SEX
+                    )
+                    GROUP BY ORD_DT
+                ) R,
+                (
+                    SELECT
+                        ORD_DT,
+                        MAX(DECODE(SEX,'${@common.code.Const@MAN}',CNT,0)) AS MALE_W,
+                        MAX(DECODE(SEX,'${@common.code.Const@FEMALE}',CNT,0)) AS FEMALE_W
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(VOM.REG_DM ,0,8) AS ORD_DT,
+                            VOM.SEX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE VOM.REG_DM IS NOT NULL
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX 
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(VOM.REG_DM,0,8), VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) W,
+                (
+                    SELECT 
+                        ORD_DT,
+                        MAX(DECODE(SEX,'${@common.code.Const@MAN}', CNT, 0)) AS MALE_J,
+                        MAX(DECODE(SEX,'${@common.code.Const@FEMALE}', CNT, 0)) AS FEMALE_J
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            JOIN_DT AS ORD_DT,
+                            VOM.SEX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE JOIN_DT IS NOT NULL 
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY JOIN_DT, VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) J,
+                (
+                    SELECT 
+                        ORD_DT,
+                        MAX(DECODE(SEX,'${@common.code.Const@MAN}', CNT, 0)) AS MALE_C,
+                        MAX(DECODE(SEX,'${@common.code.Const@FEMALE}', CNT, 0)) AS FEMALE_C
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            RESN_PROC_DAY AS ORD_DT,
+                            VOM.SEX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE RESN_PROC_DAY IS NOT NULL 
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY RESN_PROC_DAY, VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) C
+            WHERE D.DAY = R.ORD_DT(+)
+                AND D.DAY = W.ORD_DT(+)
+                AND D.DAY = J.ORD_DT(+)
+                AND D.DAY = C.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+
+    <!-- 관리자 > 통계 > 가입분석 > 연령대 > 접수건수 조회 -->
+    <select id="selectStatsJoinAnalysisAgeRegistList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisAgeRegistList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            ONE_M, TWO_M, THREE_M, FOUR_M, FIVE_M, SIX_M,
+            ONE_F, TWO_F, THREE_F, FOUR_F, FIVE_F, SIX_F
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(ONE_M), 0) AS ONE_M,
+                NVL(SUM(TWO_M), 0) AS TWO_M,
+                NVL(SUM(THREE_M), 0) AS THREE_M,
+                NVL(SUM(FOUR_M), 0) AS FOUR_M,
+                NVL(SUM(FIVE_M), 0) AS FIVE_M,
+                NVL(SUM(SIX_M), 0) AS SIX_M,
+                NVL(SUM(ONE_F), 0) AS ONE_F,
+                NVL(SUM(TWO_F), 0) AS TWO_F,
+                NVL(SUM(THREE_F), 0) AS THREE_F,
+                NVL(SUM(FOUR_F), 0) AS FOUR_F,
+                NVL(SUM(FIVE_F), 0) AS FIVE_F,
+                NVL(SUM(SIX_F), 0) AS SIX_F
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}10', CNT, 0)) AS ONE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}20', CNT, 0)) AS TWO_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}30', CNT, 0)) AS THREE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}40', CNT, 0)) AS FOUR_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}50', CNT, 0)) AS FIVE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}60', CNT, 0)) AS SIX_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}10', CNT, 0)) AS ONE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}20', CNT, 0)) AS TWO_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}30', CNT, 0)) AS THREE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}40', CNT, 0)) AS FOUR_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}50', CNT, 0)) AS FIVE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}60', CNT, 0)) AS SIX_F
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(ORD_MST_ORD_DT, 0, 8) AS ORD_DT,
+                            ORD_MST_AGE AS AGE,
+                            SEX
+                        FROM T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                            AND ORD_MST_AGE IS NOT NULL
+                            AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(ORD_MST_ORD_DT,0,8), ORD_MST_AGE, SEX
+                    )
+                    GROUP BY ORD_DT
+                ) R
+            WHERE D.DAY = R.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 연령대 > 대기건수 조회 -->
+    <select id="selectStatsJoinAnalysisAgeWaitList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisAgeWaitList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            ONE_M, TWO_M, THREE_M, FOUR_M, FIVE_M, SIX_M,
+            ONE_F, TWO_F, THREE_F, FOUR_F, FIVE_F, SIX_F
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(ONE_M), 0) AS ONE_M,
+                NVL(SUM(TWO_M), 0) AS TWO_M,
+                NVL(SUM(THREE_M), 0) AS THREE_M,
+                NVL(SUM(FOUR_M), 0) AS FOUR_M,
+                NVL(SUM(FIVE_M), 0) AS FIVE_M,
+                NVL(SUM(SIX_M), 0) AS SIX_M,
+                NVL(SUM(ONE_F), 0) AS ONE_F,
+                NVL(SUM(TWO_F), 0) AS TWO_F,
+                NVL(SUM(THREE_F), 0) AS THREE_F,
+                NVL(SUM(FOUR_F), 0) AS FOUR_F,
+                NVL(SUM(FIVE_F), 0) AS FIVE_F,
+                NVL(SUM(SIX_F), 0) AS SIX_F
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}10', CNT, 0)) AS ONE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}20', CNT, 0)) AS TWO_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}30', CNT, 0)) AS THREE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}40', CNT, 0)) AS FOUR_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}50', CNT, 0)) AS FIVE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}60', CNT, 0)) AS SIX_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}10', CNT, 0)) AS ONE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}20', CNT, 0)) AS TWO_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}30', CNT, 0)) AS THREE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}40', CNT, 0)) AS FOUR_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}50', CNT, 0)) AS FIVE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}60', CNT, 0)) AS SIX_F
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(VOM.REG_DM,0,8) AS ORD_DT,
+                            ORD_MST_AGE AS AGE,
+                            VOM.SEX
+                        FROM T_ORD_MST OM, V_ORD_MST  VOM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND ORD_MST_AGE IS NOT NULL
+                            AND VOM.REG_DM IS NOT NULL
+                            AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(VOM.REG_DM, 0, 8), ORD_MST_AGE, VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) R
+            WHERE D.DAY = R.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 연령대 > 가입건수 조회 -->
+    <select id="selectStatsJoinAnalysisAgeJoinList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisAgeJoinList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            ONE_M, TWO_M, THREE_M, FOUR_M, FIVE_M, SIX_M,
+            ONE_F, TWO_F, THREE_F, FOUR_F, FIVE_F, SIX_F
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(ONE_M), 0) AS ONE_M,
+                NVL(SUM(TWO_M), 0) AS TWO_M,
+                NVL(SUM(THREE_M), 0) AS THREE_M,
+                NVL(SUM(FOUR_M), 0) AS FOUR_M,
+                NVL(SUM(FIVE_M), 0) AS FIVE_M,
+                NVL(SUM(SIX_M), 0) AS SIX_M,
+                NVL(SUM(ONE_F), 0) AS ONE_F,
+                NVL(SUM(TWO_F), 0) AS TWO_F,
+                NVL(SUM(THREE_F), 0) AS THREE_F,
+                NVL(SUM(FOUR_F), 0) AS FOUR_F,
+                NVL(SUM(FIVE_F), 0) AS FIVE_F,
+                NVL(SUM(SIX_F), 0) AS SIX_F
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT 
+                        ORD_DT,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}10', CNT, 0)) AS ONE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}20', CNT, 0)) AS TWO_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}30', CNT, 0)) AS THREE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}40', CNT, 0)) AS FOUR_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}50', CNT, 0)) AS FIVE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}60', CNT, 0)) AS SIX_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}10', CNT, 0)) AS ONE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}20', CNT, 0)) AS TWO_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}30', CNT, 0)) AS THREE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}40', CNT, 0)) AS FOUR_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}50', CNT, 0)) AS FIVE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}60', CNT, 0)) AS SIX_F
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            JOIN_DT AS ORD_DT,
+                            ORD_MST_AGE AS AGE,
+                            VOM.SEX
+                        FROM T_ORD_MST OM, V_ORD_MST  VOM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND ORD_MST_AGE IS NOT NULL
+                            AND VOM.JOIN_DT IS NOT NULL
+                            AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  JOIN_DT, ORD_MST_AGE, VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) R
+            WHERE D.DAY = R.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 연령대 > 햬약건수 조회 -->
+    <select id="selectStatsJoinAnalysisAgeCancelList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisAgeCancelList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            ONE_M, TWO_M, THREE_M, FOUR_M, FIVE_M, SIX_M,
+            ONE_F, TWO_F, THREE_F, FOUR_F, FIVE_F, SIX_F
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(ONE_M), 0) AS ONE_M,
+                NVL(SUM(TWO_M), 0) AS TWO_M,
+                NVL(SUM(THREE_M), 0) AS THREE_M,
+                NVL(SUM(FOUR_M), 0) AS FOUR_M,
+                NVL(SUM(FIVE_M), 0) AS FIVE_M,
+                NVL(SUM(SIX_M), 0) AS SIX_M,
+                NVL(SUM(ONE_F), 0) AS ONE_F,
+                NVL(SUM(TWO_F), 0) AS TWO_F,
+                NVL(SUM(THREE_F), 0) AS THREE_F,
+                NVL(SUM(FOUR_F), 0) AS FOUR_F,
+                NVL(SUM(FIVE_F), 0) AS FIVE_F,
+                NVL(SUM(SIX_F), 0) AS SIX_F
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}10', CNT, 0)) AS ONE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}20', CNT, 0)) AS TWO_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}30', CNT, 0)) AS THREE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}40', CNT, 0)) AS FOUR_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}50', CNT, 0)) AS FIVE_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@MAN}60', CNT, 0)) AS SIX_M,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}10', CNT, 0)) AS ONE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}20', CNT, 0)) AS TWO_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}30', CNT, 0)) AS THREE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}40', CNT, 0)) AS FOUR_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}50', CNT, 0)) AS FIVE_F,
+                        SUM(DECODE(SEX||AGE,'${@common.code.Const@FEMALE}60', CNT, 0)) AS SIX_F
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            RESN_PROC_DAY AS ORD_DT,
+                            ORD_MST_AGE AS AGE,
+                            VOM.SEX
+                        FROM T_ORD_MST OM, V_ORD_MST  VOM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND ORD_MST_AGE IS NOT NULL
+                            AND VOM.RESN_PROC_DAY IS NOT NULL
+                            AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  RESN_PROC_DAY, ORD_MST_AGE, VOM.SEX
+                    )
+                    GROUP BY ORD_DT
+                ) R
+            WHERE D.DAY = R.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 상품유형 -->
+    <select id="selectStatsJoinAnalysisProductTypeList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisProductTypeList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            MONTHLY_R, IMMEDIATELY_Y_R, IMMEDIATELY_N_R, INSTALLMENT_R, RENTAL_R,
+            MONTHLY_W, IMMEDIATELY_Y_W, IMMEDIATELY_N_W, INSTALLMENT_W, RENTAL_W,
+            MONTHLY_J, IMMEDIATELY_Y_J, IMMEDIATELY_N_J, INSTALLMENT_J, RENTAL_J,
+            MONTHLY_C, IMMEDIATELY_Y_C, IMMEDIATELY_N_C, INSTALLMENT_C, RENTAL_C
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(MONTHLY_R), 0) AS MONTHLY_R,
+                NVL(SUM(IMMEDIATELY_Y_R), 0) AS IMMEDIATELY_Y_R,
+                NVL(SUM(IMMEDIATELY_N_R), 0) AS IMMEDIATELY_N_R,
+                NVL(SUM(INSTALLMENT_R), 0) AS INSTALLMENT_R,
+                NVL(SUM(RENTAL_R), 0) AS RENTAL_R,
+                NVL(SUM(MONTHLY_W), 0)  AS MONTHLY_W,
+                NVL(SUM(IMMEDIATELY_Y_W), 0) AS IMMEDIATELY_Y_W,
+                NVL(SUM(IMMEDIATELY_N_W), 0) AS IMMEDIATELY_N_W,
+                NVL(SUM(INSTALLMENT_W), 0) AS INSTALLMENT_W,
+                NVL(SUM(RENTAL_W), 0) AS RENTAL_W,
+                NVL(SUM(MONTHLY_J), 0) AS MONTHLY_J,
+                NVL(SUM(IMMEDIATELY_Y_J), 0) AS IMMEDIATELY_Y_J,
+                NVL(SUM(IMMEDIATELY_N_J), 0) AS IMMEDIATELY_N_J,
+                NVL(SUM(INSTALLMENT_J), 0) AS INSTALLMENT_J,
+                NVL(SUM(RENTAL_J), 0) AS RENTAL_J,
+                NVL(SUM(MONTHLY_C), 0) AS MONTHLY_C,
+                NVL(SUM(IMMEDIATELY_Y_C), 0) AS IMMEDIATELY_Y_C,
+                NVL(SUM(IMMEDIATELY_N_C), 0) AS IMMEDIATELY_N_C,
+                NVL(SUM(INSTALLMENT_C), 0) AS INSTALLMENT_C,
+                NVL(SUM(RENTAL_C), 0) AS RENTAL_C
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_SUPPORT}', CNT, 0)) AS MONTHLY_R,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}Y', CNT, 0)) AS IMMEDIATELY_Y_R,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}N', CNT, 0)) AS IMMEDIATELY_N_R,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_INSTALLMENT_PLAN}', CNT, 0)) AS INSTALLMENT_R,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_RENTAL}', CNT, 0)) AS RENTAL_R
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(ORD_MST_ORD_DT, 0, 8) AS ORD_DT,
+                            PRD_MST_TYPE,
+                            PRD_MST_BND_YN 
+                        FROM T_ORD_MST OM, C_PRD_MST PM, T_ORD_DLCC OD
+                        WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(ORD_MST_ORD_DT,0,8), PRD_MST_TYPE, PRD_MST_BND_YN
+                    )
+                    GROUP BY ORD_DT
+                ) R,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_SUPPORT}', CNT, 0)) AS MONTHLY_W,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}Y', CNT, 0)) AS IMMEDIATELY_Y_W,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}N', CNT, 0)) AS IMMEDIATELY_N_W,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_INSTALLMENT_PLAN}', CNT, 0)) AS INSTALLMENT_W,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_RENTAL}', CNT, 0)) AS RENTAL_W
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(VOM.REG_DM,0,8) AS ORD_DT,
+                            PRD_MST_TYPE,
+                            PRD_MST_BND_YN 
+                        FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                        WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                            AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND VOM.REG_DM IS NOT NULL
+                            AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  SUBSTR(VOM.REG_DM,0,8), PRD_MST_TYPE, PRD_MST_BND_YN
+                    )
+                    GROUP BY ORD_DT
+                ) W,
+                (
+                    SELECT 
+                        ORD_DT,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_SUPPORT}', CNT, 0)) AS MONTHLY_J,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}Y', CNT, 0)) AS IMMEDIATELY_Y_J,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}N', CNT, 0)) AS IMMEDIATELY_N_J,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_INSTALLMENT_PLAN}', CNT, 0)) AS INSTALLMENT_J,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_RENTAL}', CNT, 0)) AS RENTAL_J
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            JOIN_DT AS ORD_DT,
+                            PRD_MST_TYPE,
+                            PRD_MST_BND_YN 
+                        FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                        WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                            AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND JOIN_DT IS NOT NULL
+                            AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY JOIN_DT, PRD_MST_TYPE, PRD_MST_BND_YN
+                    )
+                    GROUP BY ORD_DT
+                ) J,
+                (
+                    SELECT
+                        ORD_DT,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_SUPPORT}', CNT, 0)) AS MONTHLY_C,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}Y', CNT, 0)) AS IMMEDIATELY_Y_C,
+                        SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN, '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}N', CNT, 0)) AS IMMEDIATELY_N_C,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_MONTHLY_INSTALLMENT_PLAN}', CNT, 0)) AS INSTALLMENT_C,
+                        SUM(DECODE(PRD_MST_TYPE, '${@common.code.Code@PRODUCT_TYPE_RENTAL}', CNT, 0)) AS RENTAL_C
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            RESN_PROC_DAY AS ORD_DT,
+                            PRD_MST_TYPE,
+                            PRD_MST_BND_YN 
+                        FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                        WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                            AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX  
+                            AND RESN_PROC_DAY IS NOT NULL
+                            AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsJoinAnalysisWhere"/>
+                        GROUP BY  RESN_PROC_DAY, PRD_MST_TYPE, PRD_MST_BND_YN
+                    )
+                    GROUP BY ORD_DT
+                ) C
+            WHERE D.DAY = R.ORD_DT(+)
+                AND D.DAY = W.ORD_DT(+)
+                AND D.DAY = J.ORD_DT(+)
+                AND D.DAY = C.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 상품정보 -->
+    <select id="selectStatsJoinAnalysisProductList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisProductList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            PRD_MST_NO, CNT_R, CNT_W, CNT_J, CNT_C,
+            (SELECT PROD_CD FROM C_PRD_MST CPM WHERE CPM.PRD_MST_NO = S1.PRD_MST_NO) AS PROD_CD,
+            (SELECT PRD_MST_NM FROM C_PRD_MST CPM WHERE CPM.PRD_MST_NO = S1.PRD_MST_NO) AS PRD_MST_NM
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(ORD_DT, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(ORD_DT, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(ORD_DT, 1, 4) AS DAY,
+                </if>
+                PRD_MST_NO,
+                SUM(DECODE(TYPE, 'R', CNT, 0)) AS CNT_R,
+                SUM(DECODE(TYPE, 'W', CNT, 0)) AS CNT_W,
+                SUM(DECODE(TYPE, 'J', CNT, 0)) AS CNT_J,
+                SUM(DECODE(TYPE, 'C', CNT, 0)) AS CNT_C
+            FROM 
+                (
+                    SELECT 
+                        COUNT (OM.ORD_MST_IDX) AS CNT,
+                        SUBSTR (ORD_MST_ORD_DT, 0, 8) AS ORD_DT,
+                        PM.PRD_MST_NO,
+                        'R' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_MST_NO, SUBSTR(ORD_MST_ORD_DT, 0, 8)
+                    UNION
+                    SELECT 
+                        COUNT (OM.ORD_MST_IDX) AS CNT,
+                        SUBSTR (VOM.REG_DM, 0, 8) AS ORD_DT,
+                        PM.PRD_MST_NO,
+                        'W' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND VOM.REG_DM IS NOT NULL
+                        AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_MST_NO, SUBSTR(VOM.REG_DM, 0, 8)
+                    UNION
+                    SELECT 
+                        COUNT (OM.ORD_MST_IDX) AS CNT,
+                        JOIN_DT AS ORD_DT,
+                        PM.PRD_MST_NO,
+                        'J' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND JOIN_DT IS NOT NULL
+                        AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_MST_NO, JOIN_DT
+                    UNION
+                    SELECT 
+                        COUNT (OM.ORD_MST_IDX) AS CNT,
+                        RESN_PROC_DAY AS ORD_DT,
+                        PM.PRD_MST_NO,
+                        'C' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND RESN_PROC_DAY IS NOT NULL
+                        AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_MST_NO, RESN_PROC_DAY
+            ) W
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(ORD_DT, PRD_MST_NO)
+                HAVING GROUPING_ID(ORD_DT, PRD_MST_NO) IN (0, 3)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(ORD_DT, 1, 6), PRD_MST_NO)
+                HAVING GROUPING_ID(SUBSTR(ORD_DT, 1, 6), PRD_MST_NO) IN (0, 3)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(ORD_DT, 1, 4), PRD_MST_NO)
+                HAVING GROUPING_ID(SUBSTR(ORD_DT, 1, 4), PRD_MST_NO) IN (0, 3)
+            </if>
+        ) S1
+        ORDER BY DAY NULLS LAST
+    </select>
+    
+    <!-- 관리자 > 통계 > 가입분석 > 상품 카테고리 정보 -->
+    <select id="selectStatsJoinAnalysisProductCategoryList" parameterType="HashMap" resultType="HashMap">
+        /* StatsJoinAnalysis.selectStatsJoinAnalysisProductCategoryList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            PRD_CTG_IDX, ONE_PRD_CTG_NM, TWO_PRD_CTG_NM, CNT_R, CNT_W, CNT_J, CNT_C
+        FROM (
+            SELECT 
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(ORD_DT, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(ORD_DT, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(ORD_DT, 1, 4) AS DAY,
+                </if>
+                PRD_CTG_IDX,
+                (
+                    SELECT PRD_CTG_NM 
+                    FROM T_PRD_CTG PC 
+                    WHERE EXISTS (
+                        SELECT * 
+                        FROM T_PRD_CTG TPC 
+                        WHERE TPC.PRD_CTG_UP_IDX = PC.PRD_CTG_IDX 
+                            AND TPC.PRD_CTG_IDX = W.PRD_CTG_IDX
+                    )
+                ) AS ONE_PRD_CTG_NM,
+                (SELECT PRD_CTG_NM FROM T_PRD_CTG PC WHERE PC.PRD_CTG_IDX = W.PRD_CTG_IDX) AS TWO_PRD_CTG_NM,
+                SUM(DECODE(TYPE, 'R', CNT, 0))  AS CNT_R,
+                SUM(DECODE(TYPE, 'W', CNT, 0))  AS CNT_W,
+                SUM(DECODE(TYPE, 'J', CNT, 0))  AS CNT_J,
+                SUM(DECODE(TYPE, 'C', CNT, 0))  AS CNT_C
+            FROM 
+                (
+                    SELECT 
+                        COUNT(OM.ORD_MST_IDX) AS CNT,
+                        SUBSTR(ORD_MST_ORD_DT,0,8) AS ORD_DT,
+                        PM.PRD_CTG_IDX,
+                        'R' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX=OD.ORD_MST_IDX
+                        AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_CTG_IDX,SUBSTR(ORD_MST_ORD_DT, 0, 8)
+                    UNION
+                    SELECT 
+                        COUNT(OM.ORD_MST_IDX) AS CNT,
+                        SUBSTR(VOM.REG_DM, 0, 8) AS ORD_DT,
+                        PM.PRD_CTG_IDX,
+                        'W' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX=OD.ORD_MST_IDX
+                        AND VOM.REG_DM IS NOT NULL
+                        AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_CTG_IDX, SUBSTR(VOM.REG_DM, 0, 8)
+                    UNION
+                    SELECT 
+                        COUNT(OM.ORD_MST_IDX) AS CNT,
+                        JOIN_DT AS ORD_DT,
+                        PM.PRD_CTG_IDX,
+                        'J' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX=OD.ORD_MST_IDX
+                        AND JOIN_DT IS NOT NULL
+                        AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_CTG_IDX, VOM.JOIN_DT
+                    UNION
+                    SELECT 
+                        COUNT(OM.ORD_MST_IDX) AS CNT,
+                        RESN_PROC_DAY AS ORD_DT,
+                        PM.PRD_CTG_IDX,
+                        'C' AS TYPE
+                    FROM T_ORD_MST OM, C_PRD_MST PM, V_ORD_MST VOM, T_ORD_DLCC OD
+                    WHERE OM.PRD_MST_NO = PM.PRD_MST_NO
+                        AND OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX=OD.ORD_MST_IDX
+                        AND RESN_PROC_DAY IS NOT NULL
+                        AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsJoinAnalysisWhere"/>
+                    GROUP BY PM.PRD_CTG_IDX, RESN_PROC_DAY
+            ) W
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(ORD_DT, PRD_CTG_IDX)
+                HAVING GROUPING_ID(ORD_DT, PRD_CTG_IDX) IN (0, 3)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(ORD_DT, 1, 6), PRD_CTG_IDX)
+                HAVING GROUPING_ID(SUBSTR(ORD_DT, 1, 6), PRD_CTG_IDX) IN (0, 3)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(ORD_DT, 1, 4), PRD_CTG_IDX)
+                HAVING GROUPING_ID(SUBSTR(ORD_DT, 1, 4), PRD_CTG_IDX) IN (0, 3)
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+</mapper>

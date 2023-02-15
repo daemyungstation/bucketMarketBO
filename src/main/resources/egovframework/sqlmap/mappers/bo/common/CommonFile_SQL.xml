@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CommonFile">
+    
+    <!-- 첨부파일 목록  -->
+    <select id="selectCommonFileList" parameterType="HashMap" resultType="HashMap">
+        /* CommonFile.selectCommonFileList */
+        SELECT
+            CMM_FLE_IDX,
+            CMM_FLE_TB_NM,
+            CMM_FLE_TB_PK,
+            CMM_FLE_TB_TYPE,
+            CMM_FLE_SYS_PATH,
+            CMM_FLE_ATT_PATH,
+            CMM_FLE_ORG_NM,
+            CMM_FLE_SYS_NM,
+            CMM_FLE_ATT_SIZE,
+            CMM_FLE_ATT_EXT,
+            CMM_FLE_DW_CNT,
+            CMM_FLE_SORT,
+            CMM_FLE_USE_YN,
+            CMM_FLE_REG_DT,
+            CMM_FLE_REG_ID,
+            CMM_FLE_SYS_PATH || CMM_FLE_ATT_PATH || CMM_FLE_SYS_NM AS CMM_FLE_SAVE_PATH
+        FROM T_CMM_FLE
+        WHERE
+            CMM_FLE_TB_NM = #{CMM_FLE_TB_NM}
+            AND CMM_FLE_USE_YN = 'Y'
+            <if test="CMM_FLE_TB_PK != null and CMM_FLE_TB_PK != ''">
+                AND CMM_FLE_TB_PK = #{CMM_FLE_TB_PK}
+            </if>
+            <if test="CMM_FLE_TB_TYPE != null and CMM_FLE_TB_TYPE != ''">
+                AND CMM_FLE_TB_TYPE = #{CMM_FLE_TB_TYPE}
+            </if>
+            <if test="arrSearchGrpIdx != null and arrSearchGrpIdx.length > 0">
+                AND CMM_FLE_TB_PK IN 
+                <foreach collection="arrSearchGrpIdx" item="sarchGrpIdx" open="(" close=")" separator=",">
+                    #{sarchGrpIdx}
+                </foreach>
+            </if>
+            <if test="PRD_MST_NO != null and PRD_MST_NO != ''">
+                AND PRD_MST_NO = #{PRD_MST_NO}
+            </if>
+    </select>
+    
+    <!-- 첨부파일 상세 정보 -->
+    <select id="selectCommonFileInfo" parameterType="HashMap" resultType="HashMap">
+        /* CommonFile.selectCommonFileInfo */
+        SELECT
+            CMM_FLE_IDX,
+            CMM_FLE_TB_NM,
+            CMM_FLE_TB_PK,
+            CMM_FLE_TB_TYPE,
+            CMM_FLE_SYS_PATH,
+            CMM_FLE_ATT_PATH,
+            CMM_FLE_ORG_NM,
+            CMM_FLE_SYS_NM,
+            CMM_FLE_ATT_SIZE,
+            CMM_FLE_ATT_EXT,
+            CMM_FLE_DW_CNT,
+            CMM_FLE_SORT,
+            CMM_FLE_USE_YN,
+            CMM_FLE_REG_DT,
+            CMM_FLE_REG_ID,
+            CMM_FLE_SYS_PATH || CMM_FLE_ATT_PATH || CMM_FLE_SYS_NM AS CMM_FLE_SAVE_PATH
+        FROM T_CMM_FLE
+        WHERE
+            CMM_FLE_USE_YN = 'Y'
+            <choose>
+                <when test="CMM_FLE_IDX != null and CMM_FLE_IDX != ''">
+                    AND CMM_FLE_IDX = #{CMM_FLE_IDX}
+                </when>
+                <otherwise>
+                    <if test="CMM_FLE_TB_NM != null and CMM_FLE_TB_NM != ''">
+                        AND CMM_FLE_TB_NM = #{CMM_FLE_TB_NM}
+                    </if>
+                    <if test="CMM_FLE_TB_PK != null and CMM_FLE_TB_PK != ''">
+                        AND CMM_FLE_TB_PK = #{CMM_FLE_TB_PK}
+                    </if>
+                    <if test="CMM_FLE_TB_TYPE != null and CMM_FLE_TB_TYPE != ''">
+                        AND CMM_FLE_TB_TYPE = #{CMM_FLE_TB_TYPE}
+                    </if>
+	                <if test="CMM_FLE_SYS_NM != null and CMM_FLE_SYS_NM != ''">
+	                    AND CMM_FLE_SYS_NM = #{CMM_FLE_SYS_NM}||'.'||CMM_FLE_ATT_EXT
+	                </if>
+                    <if test="PRD_MST_NO != null and PRD_MST_NO != ''">
+                        AND PRD_MST_NO = #{PRD_MST_NO}
+                    </if>
+                </otherwise>
+            </choose>
+    </select>
+    
+    <!-- 첨부파일 등록 -->
+    <insert id="insertCommonFile" parameterType="HashMap">
+        /* CommonFile.insertCommonFile */
+        INSERT INTO T_CMM_FLE (
+            CMM_FLE_IDX,
+            CMM_FLE_TB_NM,
+            CMM_FLE_TB_PK,
+            PRD_MST_NO,
+            CMM_FLE_TB_TYPE,
+            CMM_FLE_SYS_PATH,
+            CMM_FLE_ATT_PATH,
+            CMM_FLE_ORG_NM,
+            CMM_FLE_SYS_NM,
+            CMM_FLE_ATT_SIZE,
+            CMM_FLE_ATT_EXT,
+            CMM_FLE_DW_CNT,
+            CMM_FLE_SORT,
+            CMM_FLE_USE_YN,
+            CMM_FLE_REG_DT,
+            CMM_FLE_REG_ID
+        ) VALUES (
+            SEQ_CMM_FLE_IDX.NEXTVAL,
+            #{CMM_FLE_TB_NM},
+            #{CMM_FLE_TB_PK},
+            #{PRD_MST_NO},
+            #{CMM_FLE_TB_TYPE},
+            #{CMM_FLE_SYS_PATH},
+            #{CMM_FLE_ATT_PATH},
+            #{CMM_FLE_ORG_NM},
+            #{CMM_FLE_SYS_NM},
+            #{CMM_FLE_ATT_SIZE},
+            #{CMM_FLE_ATT_EXT},
+            0,
+            NVL
+            (#{CMM_FLE_SORT}, 
+                ( 
+                    SELECT NVL(MAX(CMM_FLE_SORT), 0) + 1 
+                    FROM T_CMM_FLE 
+                    WHERE CMM_FLE_USE_YN = 'Y' 
+                        AND CMM_FLE_TB_NM = #{CMM_FLE_TB_NM} 
+                        AND CMM_FLE_TB_PK = #{CMM_FLE_TB_PK}
+                )
+            ),
+            'Y',
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{CMM_FLE_REG_ID}
+        )
+    </insert>
+    
+    <!-- 첨부파일 다운로드 수 증가 -->
+    <update id="updateCommonFileDownCount" parameterType="HashMap">
+        /* CommonFile.updateCommonFileCount */
+        UPDATE T_CMM_FLE SET
+            CMM_FLE_DW_CNT = NVL(CMM_FLE_DW_CNT, 0) + 1
+        WHERE CMM_FLE_IDX = #{CMM_FLE_IDX}
+    </update>
+    
+    <!-- 첨부파일 사용 유무 변경 -->
+    <update id="deleteCommonFile" parameterType="HashMap">
+        /* CommonFile.deleteCommonFile */
+        UPDATE T_CMM_FLE SET
+            CMM_FLE_USE_YN = 'N'
+        WHERE CMM_FLE_IDX = #{CMM_FLE_IDX}
+    </update>
+</mapper>

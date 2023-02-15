@@ -1,0 +1,214 @@
+package web.bo.product.service;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+/**
+ * @PackageName: web.bo.product.service
+ * @FileName : ProductService.java
+ * @Date : 2020. 4. 20.
+ * @프로그램 설명 : 관리자 > 상품관리 > 미승인상품를 처리하는 Service Interface
+ * @author upleat
+ */
+public interface ProductService {
+
+    /**
+     * <pre>
+     * 1. MethodName : selectBasicProductListCount
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품 목록 개수 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectBasicProductListCount(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : selectBasicProductListCount
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품 목록 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectBasicProductList(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : selectBasicProductInfo
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 상세정보 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectBasicProductInfo(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : updateProductDisapproval
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductDisapproval(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : insertProductDisapproval
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertProductDisapproval(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectProductRejectInfo
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 거절사유보기 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectProductRejectInfo(Map<String, Object> commandMap) throws Exception;    
+
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateProductApproval
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 승인등록 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductApproval(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateProductApprovalRequest
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 재승인요청
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 5. 18.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductApprovalRequest(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : insertProductUnion
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 결합상품등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertProductUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception;    
+    
+    public int mergeProductApprovalUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectUnionProductInfo
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 결합상품 서비스 상세정보 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectUnionProductInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateProductUnion
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception;    
+
+    /**
+     * <pre>
+     * 1. MethodName : updateProductOption
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 옵션 수정
+     * 4. 작성자       : inus
+     * 5. 작성일       : 2020. 8. 12.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductOption(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateProductSuggest
+     * 2. ClassName  : ProductService.java
+     * 3. Comment    : 관리자 > 상품관리 > 결합상품 추천 순서 수정
+     * 4. 작성자       : inus
+     * 5. 작성일       : 2021. 5. 4.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductSuggest(Map<String, Object> commandMap) throws Exception;
+}

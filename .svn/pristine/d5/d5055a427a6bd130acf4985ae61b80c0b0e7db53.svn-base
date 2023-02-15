@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DlccMergeMapper">
+    
+    <resultMap id="VenderRequestMap" type="web.batch.model.VenderRequestModel">
+        <result property="vdrMstNm"     column="VDR_MST_NM" />
+        <result property="cell"         column="CELL" />
+    </resultMap>
+    
+    <!-- DLCC B2B Code : DLCCSUB.DR_V_B2B_MST : 1,666 rows (B2B 업체정보) 9초 : 01-->
+    <insert id="mergeB2bCode" parameterType="web.batch.model.B2bComModel">
+        /* DlccMergeMapper.mergeB2bCode */
+        MERGE INTO V_B2B_MST
+            USING DUAL
+               ON (COM_CD = #{b2bCd})
+            WHEN MATCHED THEN
+            
+                UPDATE SET 
+                      COM_NM = #{b2bNm}
+                    , SALE_TYPE = #{saleType}
+                    , B2B_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                    
+            WHEN NOT MATCHED THEN
+            
+                INSERT (
+                      COM_CD
+                    , COM_NM
+                    , SALE_TYPE
+                    , B2B_MST_REG_DT
+                )
+                VALUES (
+                      #{b2bCd}
+                    , #{b2bNm}
+                    , #{saleType}
+                    , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                )
+    </insert>
+    
+    <!-- DLCC Product : DLCCSUB.DR_V_PRD_MST : 55 rows (상품마스터) : 02 -->
+    <insert id="mergeProduct" parameterType="web.batch.model.ProductModel">
+        /* DlccMergeMapper.mergeProduct */
+        MERGE INTO V_PRD_MST
+            USING DUAL
+               ON (PROD_CD = #{prodCd} AND PROD_KIND = #{prodKind} AND MODEL_CD = #{modelCd})
+            
+            WHEN MATCHED THEN
+                UPDATE SET 
+                          PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                    <if test="partPaySupotYn != 'Y'.toString()">
+                        , REL_AMT = #{relAmt}
+                        , REL_CNT = #{relCnt}
+                        , MON_REL_AMT = 
+                        <choose>
+                            <when test="relAmt == 0 or relCnt == 0">
+                                0
+                            </when>
+                            <otherwise>
+                                TRUNC(#{relAmt}/#{relCnt})
+                            </otherwise>
+                        </choose>
+                        , EXPR_NO = #{exprNo}
+                    </if>
+                        
+            WHEN NOT MATCHED THEN
+            
+                INSERT (
+                     PROD_CD
+                   , PROD_KIND
+                   , MODEL_CD
+                   , MODEL_CL_NM
+                   , MODEL_NM
+                   , DISCONTINUED_DT
+                   , PROD_AMT
+                   , MON_PAY_AMT
+                   , EXPR_NO
+                   , REL_AMT
+                   , REL_CNT
+                   , PRD_MST_REG_DT
+                   , MON_REL_AMT
+                ) 
+                VALUES (
+                     #{prodCd}
+                   , #{prodKind}
+                   , #{modelCd}
+                   , #{modelClNm}
+                   , #{modelNm}
+                   , #{discontinuedDt}
+                   , #{prodAmt}
+                   , #{monPayAmt}
+                   , #{exprNo}
+                   , #{relAmt}
+                   , #{relCnt}
+                   , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                   
+                   <choose>
+                     <when test="relAmt == 0 or relCnt == 0">
+                        , 0
+                     </when>
+                     <otherwise>
+                        , TRUNC(#{relAmt}/#{relCnt})
+                     </otherwise>
+                   </choose>
+                )
+    </insert>
+    
+    <!-- DLCC Order Mst -->
+    <insert id="mergeOrderMst" parameterType="web.batch.model.OrderMstModel">
+        /* DlccMergeMapper.mergeOrderMst */
+        MERGE INTO V_ORD_MST
+            USING DUAL
+               ON (ORD_MST_IDX = #{ordMstIdx})
+            
+            WHEN MATCHED THEN
+                UPDATE SET
+                      KSTBIT = #{kstbit}                        /* 가입상태 */
+                     <if test="kstbit == '02'">
+                        , JOIN_DT = #{joinDt}                   /* 가입일 */
+                     </if>
+                     <if test="kstbit == '03'">
+                        , RESN_PROC_DAY = #{resnProcDay}        /* 해약일 */
+                     </if>
+                    , RESN_PROC_YN = #{resnProcYn}              /* 해약여부(N,해약접수, Y : 해약완료) */
+                    , ORD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                    
+            WHEN NOT MATCHED THEN
+                INSERT (
+                     ORD_MST_IDX
+                   , ACCNT_NO
+                   , PROD_CD
+                   , PROD_KIND
+                   , MODEL_CD
+                   , MODEL_NM
+                   , KSTBIT
+                   , CI_VAL
+                   , MEM_NM
+                   , CELL
+                   , BRTH_MON_DAY
+                   , SEX
+                   , HOME_ZIP
+                   , HOME_ADDR
+                   , HOME_ADDR2
+                   , HOME_TEL
+                   , EMAIL
+                   , INSPL_ZIP
+                   , INSPL_ADDR
+                   , INSPL_ADDR2
+                   , MAIN_CONTRACT
+                   , REG_DM
+                   , JOIN_DT
+                   , RESN_PROC_DAY
+                   , RESN_PROC_YN
+                   , DED_NO
+                   , PAY_MTHD
+                   , RESORT_NO
+                   , EVENT_COMP_DAY
+                   , ORD_MST_REG_DT
+                )
+                VALUES (
+                     #{ordMstIdx}
+                   , #{accntNo}
+                   , #{prodCd}
+                   , #{prodModelKind}
+                   , #{prodModelCd}
+                   , #{prodModelNm}
+                   , #{kstbit}
+                   , #{ciVal}
+                   , #{memNm}
+                   , replace(#{cell},'-','')
+                   , #{brthMonDay}
+                   , #{sex}
+                   , #{homeZip}
+                   , #{homeAddr}
+                   , ltrim(#{homeAddr2})
+                   , replace(#{homeTel},'-','')
+                   , #{email}
+                   , #{insplZip}
+                   , #{insplAddr}
+                   , ltrim(#{insplAddr2})
+                   , #{mainContract}
+                   , #{regDm}
+                   <choose>
+                     <when test="kstbit == '02'">
+                        , #{joinDt}
+                     </when>
+                     <otherwise>
+                        , ''
+                     </otherwise>
+                   </choose>
+                   <choose>
+                     <when test="kstbit == '03'">
+                        , #{resnProcDay}
+                     </when>
+                     <otherwise>
+                        , ''
+                     </otherwise>
+                   </choose>
+                   , #{resnProcYn}
+                   , #{dedNo}
+                   , #{payMthd}
+                   , #{resortNo}
+                   , #{eventCompDay}
+                   , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                )
+    </insert>
+    
+    <insert id="insertOrderDps" parameterType="web.batch.model.OrderDpsModel">
+    /* DlccMergeMapper.insertOrderDps */
+        INSERT INTO V_ORD_DPS (
+             ORD_MST_IDX
+           , PAY_NO
+           , ACCNT_NO
+           , PAY_DAY
+           , PAY_MTHD
+           , PAY_AMT
+           , REL_AMT
+           , ADD_AMT
+           , PAY_IN_DAY
+           , PAY_SUM
+           , ORD_DTL_REG_DT
+        ) 
+        VALUES ( 
+              #{ordMstIdx}
+            , #{payNo}
+            , #{accntNo}
+            , #{payDay}
+            , #{payMthd}
+            , #{payAmt}
+            , #{relAmt}
+            , #{addAmt}
+            , #{payInDay}
+            , #{payAmt}+#{relAmt}+#{addAmt}
+            , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+        )
+    </insert>
+    
+    <insert id="mergeOrderCnl" parameterType="web.batch.model.OrderCnlModel">
+    /* DlccMergeMapper.mergeOrderCnl */
+        MERGE INTO V_PRD_CNL
+            USING DUAL
+               ON (PROD_CD = #{prodCd} AND NO = #{no} AND APP_DAY = #{appDay})
+          
+            WHEN MATCHED THEN
+                UPDATE SET   RESN_AMT = #{resnAmt}
+                           , PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            
+            WHEN NOT MATCHED THEN
+            
+                INSERT (
+                     PROD_CD
+                   , NO
+                   , APP_DAY
+                   , RESN_AMT
+                   , PRD_MST_REG_DT
+                ) 
+                VALUES ( 
+                     #{prodCd}
+                   , #{no}
+                   , #{appDay}
+                   , #{resnAmt}
+                   , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                )
+    </insert>
+    
+    <resultMap id="ProductResultMap" type="web.batch.model.ProductModel" >
+        <result property="prodCd"           column="PROD_CD" />
+    </resultMap>
+    <select id="selectProdCdList" resultMap="ProductResultMap">
+    /* DlccMergeMapper.selectProdCdList */
+        SELECT 
+            PROD_CD
+        FROM V_PRD_MST
+        GROUP BY PROD_CD
+    </select>
+    
+    <insert id="insertOrderRmt" parameterType="web.batch.model.OrderRmtModel">
+    /* DlccMergeMapper.insertOrderRmt */
+        INSERT INTO V_RMT_ORD (
+             RMT_ORD_IDX
+           , ORD_MST_IDX
+           , ACCNT_NO
+           , ALOW_DT
+           , ALOW_AMT
+           , REG_MAN
+           , REG_DM
+           , RMT_ORD_REG_DT
+        ) 
+        VALUES ( 
+             SEQ_RMT_ORD_IDX.NEXTVAL
+           , #{ordMstIdx}
+           , #{accntNo}
+           , #{alowDt}
+           , #{alowAmt}
+           , #{regMan}
+           , #{regDm}
+           , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+        )
+    </insert>
+    
+    <!-- DLCCSUB.DR_V_RMT_BASIC : 22 rows (레디플래너 정산기초정보) -->
+    <insert id="mergeBasicRmt" parameterType="web.batch.model.RmtBasicModel">
+    /* DlccMergeMapper.mergeOrderCnl */
+        MERGE INTO V_RMT_BASIC
+            USING DUAL
+               ON (
+                    PROD_CD = #{prodCd} 
+                    AND SALE_TYPE = #{saleType} 
+                    AND B2B_COMP_CD = #{b2bCompCd}
+                    AND PAY_NO = #{payNo}
+                    AND PAY_NO_END = #{payNoEnd}
+                    AND PROD_JOIN_DT_STR = #{prodJoinDtStr}
+                    AND PROD_JOIN_DT_END = #{prodJoinDtEnd}
+                  )
+          
+            WHEN MATCHED THEN
+                UPDATE SET   SALE_TYPE_NM = #{saleTypeNm}
+                           , B2B_COMP_NM = #{b2bCompNm}
+                           , AMT = #{amt}
+                           , RMT_BASIC_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            
+            WHEN NOT MATCHED THEN
+            
+                INSERT (
+                     PROD_CD
+                   , SALE_TYPE
+                   , SALE_TYPE_NM
+                   , B2B_COMP_CD
+                   , B2B_COMP_NM
+                   , AMT
+                   , PAY_NO
+                   , PAY_NO_END
+                   , PROD_JOIN_DT_STR
+                   , PROD_JOIN_DT_END
+                   , RMT_BASIC_REG_DT
+                  
+                ) 
+                VALUES ( 
+                     #{prodCd}
+                   , #{saleType}
+                   , #{saleTypeNm}
+                   , #{b2bCompCd}
+                   , #{b2bCompNm}
+                   , #{amt}
+                   , #{payNo}
+                   , #{payNoEnd}
+                   , #{prodJoinDtStr}
+                   , #{prodJoinDtEnd}
+                   , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+                )
+    </insert>
+    
+    <!-- 11. 레디플레너 지원혜택 지급요청 알람 (매월 1일 09:00) -->
+    <select id="selectVenderRequestList" resultMap="VenderRequestMap">
+        SELECT VDR_MST_IDX,
+            (SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = S1.VDR_MST_IDX) AS VDR_MST_NM,
+            (SELECT VDR_MST_MNG_HP1||VDR_MST_MNG_HP2||VDR_MST_MNG_HP3 FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = S1.VDR_MST_IDX) AS CELL
+            FROM (
+                SELECT 
+                    TPM.VDR_MST_IDX
+                FROM T_ORD_MST OM, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE  <![CDATA[<>]]>  '3201'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VOD.PAY_NO  <![CDATA[<=]]>   VPM.REL_CNT
+                AND VOD.ORD_BNF_YN = 'N'
+                UNION
+                SELECT 
+                    TPM.VDR_MST_IDX
+                FROM T_ORD_MST OM, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE = '3201'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VPM.EXPR_NO = VOD.PAY_NO
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VOD.ORD_BNF_YN = 'N'
+                GROUP BY VDR_MST_IDX
+            ) S1
+    </select>
+    
+</mapper>

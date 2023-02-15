@@ -1,0 +1,49 @@
+#################################################################################################################################
+#################################################################################################################################
+############################################################# LOCAL #############################################################
+#################################################################################################################################
+#################################################################################################################################
+
+# \ud504\ub85c\uc81d\ud2b8 \uba85
+project.title=\ubc84\ud0b7\ub9c8\ucf13 LOCAL
+# \uc778\uc99d\uc644\ub8cc \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+administrator.main.page=/bo/main/dashboardMain.do
+# \ube44\uc778\uc99d \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+guest.main.page=/{0}/manager/login.do
+# \uc774\ucc28\uc778\uc99d \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+guest.accredit.page=/bo/manager/loginAccredit.do
+# \uc81c\ud734\uc5c5\uccb4 \uc57d\uad00\ub3d9\uc758 \ud398\uc774\uc9c0
+scm.term.agree.page=/bo/manager/loginTerm.do
+# \uc778\uc99d \uc720\ud6a8 \uc2dc\uac04
+accredit.alive.time=3
+
+# WAS
+server.domain=http://localhost:8080
+front.domain=http://localhost:8080
+mobile.domain=http://localhost:8080
+# WEB
+js.domain=http://localhost:8080
+css.domain=http://localhost:8080
+img.domain=http://localhost:8080
+# UPLOAD
+cdn.domain=/nas/cdn
+cdn.domain.editor=/nas/cdn/editor
+
+# WAS
+server.ssl.domain=https://localhost:8443
+front.ssl.domain=https://localhost:8443
+mobile.ssl.domain=https://localhost:8443
+# WEB
+js.ssl.domain=https://localhost:8443
+css.ssl.domain=https://localhost:8443
+img.ssl.domain=https://localhost:8443
+# UPLOAD
+doc.ssl.domain=/nas/doc
+cdn.ssl.domain=/nas/cdn
+cdn.ssl.domain.editor=/nas/cdn/editor
+
+# DAUM ZIPCODE
+daum.zipcode.api.url=https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js
+
+# Scheduler Exce Server IP
+scheduler.task.exce.server.ip=10.212.134.195

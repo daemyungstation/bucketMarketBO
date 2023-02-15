@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="BannerDisplay">
+
+    <!-- 관리자 > 전시관리 > 전시배너관리 > 목록 -->
+    <select id="selectBannerDisplayList" parameterType="HashMap" resultType="HashMap">
+        /* BannerDisplay.selectBannerDisplayList */
+        SELECT
+            BM.BNR_MST_IDX,
+            BM.BNR_MST_TITLE,
+            BM.BNR_MST_ST_DT,
+            BM.BNR_MST_ED_DT,
+            TO_DATE(TO_CHAR(TO_DATE(BM.BNR_MST_ED_DT,'YYYYMMDDHH24MISS'),'YYYYMMDD'),'YYYYMMDD') - TO_DATE(TO_CHAR(SYSDATE, 'YYYYMMDD'),'YYYYMMDD') +1 AS BNR_MST_DIFF,
+            CASE WHEN 
+                BM.BNR_MST_USE_YN = 'Y' AND TO_CHAR(SYSDATE,'YYYYMMDDYYYYMMDDHH24MISS') BETWEEN BM.BNR_MST_ST_DT AND BM.BNR_MST_ED_DT THEN 'ON'
+            WHEN 
+                BM.BNR_MST_USE_YN = 'Y' AND TO_CHAR(SYSDATE,'YYYYMMDDYYYYMMDDHH24MISS') <![CDATA[<]]> BM.BNR_MST_ED_DT THEN '대기중'
+            ELSE
+                'OFF'
+            END AS BNR_MST_STATE,
+            ( 
+                SELECT CMM_FLE_IDX 
+                FROM T_CMM_FLE 
+                WHERE CMM_FLE_USE_YN = 'Y' 
+                    AND CMM_FLE_TB_NM = 'T_BNR_MST'
+                    AND CMM_FLE_TB_PK = BNR_MST_IDX
+                    AND CMM_FLE_TB_TYPE = #{PC}
+            ) AS CMM_FLE_PC_IDX,
+            ( 
+                SELECT CMM_FLE_IDX 
+                FROM T_CMM_FLE 
+                WHERE CMM_FLE_USE_YN = 'Y' 
+                    AND CMM_FLE_TB_NM = 'T_BNR_MST'
+                    AND CMM_FLE_TB_PK = BNR_MST_IDX
+                    AND CMM_FLE_TB_TYPE = #{MOBILE}
+            ) AS CMM_FLE_MOBILE_IDX
+        FROM T_BNR_MST BM
+        WHERE BM.CMN_COM_IDX = #{CMN_COM_IDX}
+        ORDER BY BM.BNR_MST_SRT ASC
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 전시배너관리 > 상세 -->
+    <select id="selectBannerDisplayInfo" parameterType="HashMap" resultType="HashMap">
+        /* BannerDisplay.selectBannerDisplayInfo */
+        SELECT
+            BM.BNR_MST_IDX,
+            BM.BNR_MST_TITLE,
+            BM.BNR_MST_ST_DT,
+            BM.BNR_MST_ST_HH,
+            BM.BNR_MST_ST_MM,
+            BM.BNR_MST_ED_DT,
+            BM.BNR_MST_ED_HH,
+            BM.BNR_MST_ED_MM,
+            BM.BNR_MST_TGT,
+            BM.BNR_MST_URL,
+            BM.BNR_MST_USE_YN,
+            BM.BNR_MST_REG_DT,
+            BM.BNR_MST_REG_ID,
+            (SELECT ADM_MST_ID FROM T_ADM_MST WHERE ADM_MST_ID = BM.BNR_MST_REG_ID) AS BNR_MST_REG_NM,
+            BM.BNR_MST_UPD_DT,
+            BM.BNR_MST_UPD_ID,
+            (SELECT ADM_MST_ID FROM T_ADM_MST WHERE ADM_MST_ID = BM.BNR_MST_UPD_ID) AS BNR_MST_UPD_NM
+        FROM T_BNR_MST BM
+        WHERE BM.BNR_MST_IDX = #{BNR_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 전시배너관리 > 등록 -->
+    <insert id="insertBannerDisplay" parameterType="HashMap">
+        <selectKey keyProperty="BNR_MST_IDX" keyColumn="BNR_MST_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_BNR_MST_IDX.NEXTVAL AS BNR_MST_IDX  FROM DUAL
+        </selectKey>
+        /* BannerDisplay.insertBannerDisplay */
+        INSERT INTO T_BNR_MST (
+            BNR_MST_IDX,
+            CMN_COM_IDX,
+            BNR_MST_USE_YN,
+            BNR_MST_TITLE,
+            BNR_MST_ST_DT,
+            BNR_MST_ST_HH,
+            BNR_MST_ST_MM,
+            BNR_MST_ED_DT,
+            BNR_MST_ED_HH,
+            BNR_MST_ED_MM,
+            BNR_MST_TGT,
+            BNR_MST_URL,
+            BNR_MST_SRT,
+            BNR_MST_REG_DT,
+            BNR_MST_REG_IP,
+            BNR_MST_REG_ID
+        ) VALUES (
+            #{BNR_MST_IDX},
+            #{CMN_COM_IDX},
+            NVL(#{BNR_MST_USE_YN}, 'N'),
+            #{BNR_MST_TITLE},
+            REPLACE(#{BNR_MST_ST_DT}, '-', ''),
+            #{BNR_MST_ST_HH},
+            #{BNR_MST_ST_MM},
+            REPLACE(#{BNR_MST_ED_DT}, '-', ''),
+            #{BNR_MST_ED_HH},
+            #{BNR_MST_ED_MM},
+            #{BNR_MST_TGT},
+            #{BNR_MST_URL},
+            (
+                SELECT NVL(MAX(BNR_MST_SRT), 0) + 1
+                FROM T_BNR_MST
+                WHERE CMN_COM_IDX = #{CMN_COM_IDX}
+            ),
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{BNR_MST_REG_IP},
+            #{BNR_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 전시관리 > 전시배너관리 > 수정 -->
+    <update id="updateBannerDisplay" parameterType="HashMap">
+        /* BannerDisplay.updateBannerDisplay */
+        UPDATE T_BNR_MST SET 
+            <if test="BNR_MST_USE_YN != null and BNR_MST_USE_YN != ''">
+                BNR_MST_USE_YN = #{BNR_MST_USE_YN},
+            </if>
+            <if test="BNR_MST_TITLE != null and BNR_MST_TITLE != ''">
+                BNR_MST_TITLE = #{BNR_MST_TITLE},
+            </if>
+            <if test="BNR_MST_ST_DT != null and BNR_MST_ST_DT != ''">
+                BNR_MST_ST_DT = REPLACE(#{BNR_MST_ST_DT}, '-', ''),
+            </if>
+            <if test="BNR_MST_ST_HH != null and BNR_MST_ST_HH != ''">
+                BNR_MST_ST_HH = #{BNR_MST_ST_HH},
+            </if>
+            <if test="BNR_MST_ST_MM != null and BNR_MST_ST_MM != ''">
+                BNR_MST_ST_MM = #{BNR_MST_ST_MM},
+            </if>
+            <if test="BNR_MST_ED_DT != null and BNR_MST_ED_DT != ''">
+                BNR_MST_ED_DT = REPLACE(#{BNR_MST_ED_DT}, '-', ''),
+            </if>
+            <if test="BNR_MST_ED_HH != null and BNR_MST_ED_HH != ''">
+                BNR_MST_ED_HH = #{BNR_MST_ED_HH},
+            </if>
+            <if test="BNR_MST_ED_MM != null and BNR_MST_ED_MM != ''">
+                BNR_MST_ED_MM = #{BNR_MST_ED_MM},
+            </if>
+            <if test="BNR_MST_TGT != null and BNR_MST_TGT != ''">
+                BNR_MST_TGT = #{BNR_MST_TGT},
+            </if>
+            <if test="BNR_MST_URL != null and BNR_MST_URL != ''">
+                BNR_MST_URL = #{BNR_MST_URL},
+            </if>
+            <if test="BNR_MST_SRT != null and BNR_MST_SRT != ''">
+                BNR_MST_SRT = #{BNR_MST_SRT},
+            </if>
+            BNR_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            BNR_MST_UPD_IP = #{BNR_MST_UPD_IP},
+            BNR_MST_UPD_ID = #{BNR_MST_UPD_ID}
+        WHERE BNR_MST_IDX = #{BNR_MST_IDX}
+    </update>
+</mapper>

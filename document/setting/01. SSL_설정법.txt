@@ -1,0 +1,18 @@
+#####################################################################
+############################## SSL 설정법 ############################## 
+#####################################################################
+
+1. /bucketMarketBO/document/setting/etc 해당 경로의 sslKey.zip 파일 압축 풀기
+2. keystore 파일을 C:\ssl 폴더에 추가
+3. tomcat > server.xml에 해당 구문 추가
+	<Connector SSLEnabled="true"
+		clientAuth="false"
+		connectionTimeout="20000"
+		keystoreFile="C:\ssl\keystore"
+		keystorePass="123456"
+		maxThreads="150"
+		port="8443"
+		protocol="org.apache.coyote.http11.Http11Protocol"
+		scheme="https"
+		secure="true"
+		sslProtocol="TLS"/>

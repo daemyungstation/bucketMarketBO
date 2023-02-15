@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ProductNotificationInfo">
+    
+    <!-- 관리자 > 상품관리 > 품목 갯수 -->
+    <select id="selectProductNotificationInfoListCount" parameterType="HashMap" resultType="Integer">
+        /* ProductNotificationInfo.selectProductNotificationInfoListCount */
+        SELECT
+            COUNT(PRD_NFI_IDX)
+         FROM
+            T_PRD_NFI 
+    </select>
+        
+    <!-- 관리자 > 상품관리 > 품목 목록 -->
+    <select id="selectProductNotificationInfoList" parameterType="HashMap" resultType="HashMap">
+        /* ProductNotificationInfo.selectProductNotificationInfoList */
+        SELECT
+            S2.* 
+        FROM
+            (   SELECT
+                    ROWNUM AS RNUM,
+                    S1.* 
+                FROM
+                    (   SELECT
+                            PRD_NFI_IDX,
+                            PRD_NFI_NM,
+                            PRD_NFI_USE_YN
+                        FROM
+                            T_PRD_NFI
+                        WHERE
+                            PRD_NFI_LEVEL = #{PRD_NFI_LEVEL}
+                            <if test="PRD_NFI_USE_YN != null and PRD_NFI_USE_YN != ''">
+                                AND PRD_NFI_USE_YN = #{PRD_NFI_USE_YN} 
+                            </if>
+                        START WITH PRD_NFI_UP_IDX = 0 
+                        CONNECT BY PRIOR PRD_NFI_IDX = PRD_NFI_UP_IDX 
+                        ORDER SIBLINGS BY PRD_NFI_IDX ASC 
+                    )
+                    S1 
+            )
+            S2 
+    </select>
+    
+    <!-- 관리자 > 상품관리 > 품목 상세보기 -->
+    <select id="selectproductNotificationInfoTop" parameterType="HashMap" resultType="HashMap">
+        /* ProductNotificationInfo.selectproductNotificationInfoTop */
+        SELECT
+            PRD_NFI_IDX,
+            PRD_NFI_NM,
+            PRD_NFI_LEVEL,
+            PRD_NFI_UP_IDX,
+            PRD_NFI_USE_YN,
+            PRD_NFI_REG_DT,
+            PRD_NFI_REG_IP,
+            PRD_NFI_REG_ID,
+            PRD_NFI_UPD_DT,
+            PRD_NFI_UPD_IP,
+            PRD_NFI_UPD_ID 
+        FROM
+            T_PRD_NFI
+        WHERE
+            PRD_NFI_IDX = #{PRD_NFI_IDX}     
+        AND PRD_NFI_LEVEL = 0
+    </select>
+    
+    <!-- 관리자 > 상품관리 > 품목에 대한 항목 상세보기 -->
+    <select id="selectproductNotificationInfo" parameterType="HashMap" resultType="HashMap">
+        /* ProductNotificationInfo.selectproductNotificationInfo */
+        SELECT
+            PRD_NFI_IDX,
+            PRD_NFI_NM,
+            PRD_NFI_LEVEL,
+            PRD_NFI_UP_IDX,
+            PRD_NFI_INFO,
+            PRD_NFI_USE_YN,
+            PRD_NFI_REG_DT,
+            PRD_NFI_REG_IP,
+            PRD_NFI_REG_ID,
+            PRD_NFI_UPD_DT,
+            PRD_NFI_UPD_IP,
+            PRD_NFI_UPD_ID
+        FROM
+            T_PRD_NFI
+        WHERE
+            PRD_NFI_UP_IDX = #{PRD_NFI_IDX}     
+        ORDER BY PRD_NFI_IDX ASC
+    </select>
+    
+    <!-- 관리자 > 상품관리 > 상품고시정보 품목정보 등록 -->
+    <insert id="insertProductNotificationInfo" parameterType="HashMap">
+        /* ProductNotificationInfo.insertProductNotificationInfo */
+        INSERT INTO
+            T_PRD_NFI
+            (
+                PRD_NFI_IDX,
+                PRD_NFI_NM,
+                PRD_NFI_LEVEL,
+                PRD_NFI_UP_IDX,
+                PRD_NFI_INFO,
+                PRD_NFI_USE_YN,
+                PRD_NFI_REG_DT,
+                PRD_NFI_REG_IP,
+                PRD_NFI_REG_ID
+            )
+        VALUES
+            (
+                SEQ_PRD_NFI_IDX.NEXTVAL,
+                #{PRD_NFI_NM},
+                NVL(#{PRD_NFI_LEVEL}, 0),
+                NVL(#{PRD_NFI_UP_IDX}, 0),
+                #{PRD_NFI_INFO},
+                NVL(#{PRD_NFI_USE_YN}, 'N'),
+                TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                #{PRD_NFI_REG_IP},
+                #{PRD_NFI_REG_ID}
+            )
+    </insert>
+    
+    <!-- 관리자 > 상품관리 > 상품고시정보 품목정보 등록 -->
+    <insert id="insertProductNotificationInfoTop" parameterType="HashMap">
+        <selectKey keyProperty="PRD_NFI_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_PRD_NFI_IDX.NEXTVAL AS PRD_NFI_IDX FROM DUAL
+        </selectKey>
+        /* ProductNotificationInfo.insertProductNotificationInfoTop */
+        INSERT INTO
+            T_PRD_NFI
+            (
+                PRD_NFI_IDX,
+                PRD_NFI_NM,
+                PRD_NFI_LEVEL,
+                PRD_NFI_UP_IDX,
+                PRD_NFI_USE_YN,
+                PRD_NFI_REG_DT,
+                PRD_NFI_REG_IP,
+                PRD_NFI_REG_ID
+            )
+        VALUES
+            (
+                #{PRD_NFI_IDX},
+                #{PRD_NFI_NM},
+                NVL(#{PRD_NFI_LEVEL}, 0),
+                NVL(#{PRD_NFI_UP_IDX}, 0),
+                NVL(#{PRD_NFI_USE_YN}, 'N'),
+                TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                #{PRD_NFI_REG_IP},
+                #{PRD_NFI_REG_ID}
+            )
+    </insert>
+    
+    <!-- 관리자 > 상품관리 > 상품고시 품목 수정 -->
+    <update id="updateproductNotificationInfoTop" parameterType="HashMap">
+        /* ProductNotificationInfo.updateproductNotificationInfoTop */
+        UPDATE
+            T_PRD_NFI 
+        SET
+            PRD_NFI_NM = #{PRD_NFI_NM},
+            PRD_NFI_USE_YN = NVL(#{PRD_NFI_USE_YN}, 'N'),
+            PRD_NFI_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_NFI_UPD_IP = #{PRD_NFI_UPD_IP},
+            PRD_NFI_UPD_ID = #{PRD_NFI_UPD_ID} 
+        WHERE
+            PRD_NFI_IDX = #{PRD_NFI_IDX}
+    </update>
+    
+    <!-- 관리자 > 상품관리 > 상품고시 항목 삭제 -->
+    <delete id="deleteproductNotificationInfo" parameterType="hashmap" >
+        <![CDATA[
+        /* ProductNotificationInfo.deleteproductNotificationInfo */
+        DELETE FROM T_PRD_NFI WHERE PRD_NFI_UP_IDX = #{PRD_NFI_IDX}
+        ]]>
+    </delete>       
+    
+</mapper>

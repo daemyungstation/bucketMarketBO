@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ProductImage">
+
+    <!-- 관리자 > 상품관리 > 상품이미지 > 목록 -->
+    <select id="selectProductImageList" parameterType="HashMap" resultType="HashMap">
+        /* ProductImage.selectProductImageList */
+        SELECT
+            PRD_IMG_IDX,
+            PRD_PRD_MST_CD,
+            PRD_IMG_SORT,
+            PRD_IMG_ATT_PATH,
+            PRD_IMG_ATT_SIZE,
+            PRD_IMG_URL_PATH,
+            PRD_IMG_SYS_NM,
+            PRD_IMG_ORG_NM,
+            PRD_IMG_GBN
+        FROM T_PRD_IMG
+        WHERE PRD_PRD_MST_CD = #{PRD_MST_CD}
+        <if test="PRD_IMG_ATT_SIZE != null and PRD_IMG_ATT_SIZE != ''">
+            AND PRD_IMG_ATT_SIZE = #{PRD_IMG_ATT_SIZE}
+        </if>
+        <if test="PRD_IMG_SYS_NM != null and PRD_IMG_SYS_NM != ''">
+            AND PRD_IMG_SYS_NM LIKE #{PRD_IMG_SYS_NM} || '%'
+        </if>
+        ORDER BY PRD_IMG_SORT, PRD_IMG_ATT_SIZE ASC
+    </select>
+    
+    <!-- 관리자 > 상품관리 > 상품이미지 > 등록 -->
+    <insert id="insertProductImage" parameterType="HashMap">
+        /* ProductImage.insertProductImage */
+        <selectKey keyProperty="PRD_IMG_IDX" keyColumn="PRD_IMG_IDX" order="BEFORE" resultType="Integer">
+            SELECT SEQ_PRD_IMG_IDX.NEXTVAL AS PRD_IMG_IDX FROM DUAL
+        </selectKey>
+        INSERT INTO T_PRD_IMG (
+            PRD_IMG_IDX,
+            PRD_PRD_MST_CD,
+            PRD_IMG_SORT,
+            PRD_IMG_ATT_PATH,
+            PRD_IMG_SYS_NM,
+            PRD_IMG_ATT_SIZE,
+            PRD_IMG_URL_PATH,
+            PRD_IMG_ORG_NM,
+            PRD_IMG_GBN,
+            PRD_IMG_REG_DT
+        ) VALUES (
+            #{PRD_IMG_IDX},
+            #{PRD_MST_CD},
+            #{PRD_IMG_SORT},
+            #{PRD_IMG_ATT_PATH},
+            #{PRD_IMG_SYS_NM},
+            #{PRD_IMG_ATT_SIZE},
+            #{PRD_IMG_WEB_PATH},
+            #{PRD_IMG_ORG_NM},
+            #{PRD_IMG_GBN},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+        )
+    </insert>
+    
+    <!-- 관리자 > 상품관리 > 상품이미지 > 삭제 -->
+    <delete id="deleteProductImage" parameterType="HashMap">
+        /* ProductImage.deleteProductImage */
+        DELETE FROM T_PRD_IMG
+        WHERE PRD_IMG_IDX = #{PRD_IMG_IDX}
+    </delete>
+</mapper>

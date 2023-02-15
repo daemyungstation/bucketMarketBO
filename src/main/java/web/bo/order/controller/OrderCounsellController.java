@@ -1,0 +1,201 @@
+package web.bo.order.controller;
+
+import java.net.InetAddress;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.util.StopWatch;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.ibm.icu.text.SimpleDateFormat;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.Code;
+import common.dao.CommonDefaultDAO;
+import common.model.Manager.ROLE_MANAGER;
+import common.model.Paging;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.viewer.EXCEL;
+import common.viewer.JSON;
+import egovframework.rte.fdl.property.EgovPropertyService;
+import lombok.extern.log4j.Log4j2;
+import web.batch.model.CounsellMstModel;
+import web.batch.model.RmtBasicModel;
+import web.batch.service.BatchManagerService;
+import web.batch.service.impl.BatchManagerServiceImpl;
+import web.bo.common.service.CommonService;
+import web.bo.planner.service.CommonPlannerService;
+import web.bo.planner.service.PlannerCounsellService;
+
+/**
+ * <pre>
+ * &#64;PackageName: web.bo.planner.controller
+ * &#64;FileName : PlannerCounsellListController.java
+ * &#64;Date : 2020. 4. 3.
+ * &#64;프로그램 설명 : 관리자 > 레디플래너 > 활동 플래너
+ * &#64;author upleat
+ * </pre>
+ */
+@Log4j2
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class OrderCounsellController {
+
+    @Resource(name = "commonService")
+    private CommonService commonService;
+
+    @Resource(name = "plannerCounsellService")
+    private PlannerCounsellService plannerCounsellService;
+    
+    @Resource(name= "batchManagerService")
+    private BatchManagerService batchManagerService;
+    
+    @Resource(name = "defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+    
+    @Resource(name = "propertiesService")
+    private EgovPropertyService properties;
+    
+    @Resource(name = "commonPlannerService")
+    private CommonPlannerService commonPlannerService;
+    
+    private StopWatch stopWatch;
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCounsellList
+     * 2. ClassName  : PlannerCounsellListController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 활동 플래너
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/order/orderCounsellList")
+    public ModelAndView plannerCounsellList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 공통코드
+        List<String> codeList = new ArrayList<>();
+        // 사업자 유형
+        codeList.add("PLANNER_BUSINESS_CLASS");
+        mv.addObject("codes", this.commonService.selectCodes(codeList.toArray(new String[codeList.size()])));
+        
+
+        // 목록 개수
+        int totalCount = this.plannerCounsellService.selectPlannerCounsellListCount(commandMap);
+
+        // 페이징
+        Paging paging = new Paging(totalCount, commandMap);
+        mv.addObject("paging", paging);
+        commandMap.put("startNum", paging.getStartNum());
+        commandMap.put("endNum", paging.getEndNum());
+
+        // 목록
+        List<Map<String, Object>> list = null;
+        if (totalCount > 0) {
+            list = this.plannerCounsellService.selectPlannerCounsellList(commandMap);
+        }
+        
+        String updateDate = this.plannerCounsellService.selectUpadate(commandMap);
+        mv.addObject("updateDate", updateDate);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("list", list);
+
+        mv.setViewName("bo/order/orderCounsellList");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : activePlannerExcelDownload
+     * 2. ClassName  : ActivePlannerController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 활동 플래너 > 엑셀 다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/order/orderCounsellExcelDownload")
+    public EXCEL plannerCounsellExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.plannerCounsellService.selectPlannerCounsellList(commandMap);
+        if (list != null) {
+            excel.put("fileName", "daemyung_order_counsell_" + DateUtil.getCurrentDateTime());
+            List<String[]> column = new ArrayList<>();
+            column.add(new String[] { "회원번호", "ACCNT_NO", "String", "50" });
+            column.add(new String[] { "고객명", "MEM_NM", "String", "50" });
+            column.add(new String[] { "연락처", "CELL", "String", "50" });
+            column.add(new String[] { "상품명", "PRD_MST_NM", "String", "100" });
+            column.add(new String[] { "등록일", "REG_DM", "String", "100" });
+            column.add(new String[] { "레디플래너 번호", "RDP_MST_NO", "String", "50" });
+            column.add(new String[] { "레디플래너 고유 번호", "RDP_MST_IDX", "String", "50" });
+            column.add(new String[] { "레디플래너 이름", "RDP_MST_MEM_NM", "String", "50" });
+            column.add(new String[] { "영업사원", "SELLER_NAME", "String", "50" });
+            column.add(new String[] { "추천인", "ORD_MST_REC_TXT", "String", "80" });
+            column.add(new String[] { "상담결과", "COUNSELL_RESULT", "String", "100" });
+            column.add(new String[] { "상담메모", "COUNSELL_MEMO", "String", "50" });
+            column.add(new String[] { "회원상태", "KSTBIT", "String", "50" });
+            column.add(new String[] { "납입회차", "PAY_NO", "String", "50" });
+            column.add(new String[] { "UTM_SOURCE", "UTM_SOURCE", "String", "50" });
+            column.add(new String[] { "UTM_MEDIUM", "UTM_MEDIUM", "String", "50" });
+            column.add(new String[] { "UTM_CAMPAIGN", "UTM_CAMPAIGN", "String", "50" });
+            column.add(new String[] { "UTM_TERM", "UTM_TERM", "String", "50" });
+            column.add(new String[] { "UTM_CONTENT", "UTM_CONTENT", "String", "50" });
+            excel.put("headerTitle", column.stream().map(a -> a[0]).toArray(String[]::new));
+            excel.put("cellField", column.stream().map(a -> a[1]).toArray(String[]::new));
+            excel.put("cellType", column.stream().map(a -> a[2]).toArray(String[]::new));
+            excel.put("colSize", column.stream().map(a -> a[3]).toArray(String[]::new));
+            excel.put("list", list);
+        }
+        return excel;
+    }
+    
+    @RequestMapping(value = "bo/order/orderCounsellUpdateDataAjax")
+    public JSON plannerCalculatePaymentAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        batchManagerService.doJob04();
+        batchManagerService.doJob05De1();
+        batchManagerService.doJob12();
+        
+        json.addObject("isSuccess", "isSuccess");
+        return json;
+    }
+
+    @RequestMapping(value = "bo/order/orderCounsellUpdateDPSAjax")
+    public JSON orderCounsellUpdateDPSAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        String runMonth = String.valueOf(commandMap.get("runMonth"));
+        JSON json = new JSON();
+        batchManagerService.updateOrderDps(runMonth);
+        json.addObject("isSuccess", "isSuccess");
+        return json;
+    }
+
+    
+    
+    
+}

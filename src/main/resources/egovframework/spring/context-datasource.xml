@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jdbc="http://www.springframework.org/schema/jdbc" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+        http://www.springframework.org/schema/jdbc  http://www.springframework.org/schema/jdbc/spring-jdbc-4.0.xsd">
+    
+    <!-- Mall 
+    <bean id="dataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+        <property name="jndiName" value="java:comp/env/jdbc/daemyung"/>
+    </bean>
+     --> 
+
+    <!-- DLCC    
+    <bean id="dataSourceForDlcc" class="org.springframework.jndi.JndiObjectFactoryBean">
+        <property name="jndiName" value="java:comp/env/jdbc/daemyungdlcc"/>
+    </bean>
+    -->
+    
+    <!-- Junit용 -->
+    <beans profile="local">
+        <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/DIRECT"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>
+        <bean id="dataSourceForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/DLCCSUB"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean> 
+        <bean id="dataSourceConForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/dmlife"/>
+            <!-- <property name="url" value="jdbc:oracle:thin:@183.111.69.203:1521/dmlife"/> -->
+            <property name="username" value="lf_dmuser"/>
+            <property name="password" value="dmuser123"/>
+        </bean>
+        <bean id="dataSourceLog" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSource" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogConForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceConForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+    </beans>
+    <beans profile="dev">
+        <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/DIRECT"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>
+        <bean id="dataSourceForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/DLCCSUB"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>
+        <bean id="dataSourceConForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.83:1521/dmlife"/>
+            <property name="username" value="lf_dmuser"/>
+            <property name="password" value="dmuser123"/>
+        </bean>      
+        <bean id="dataSourceLog" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSource" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogConForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceConForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+    </beans>
+    <beans profile="prod">
+    <!--<beans profile="local">-->
+        <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.42:1521/DIRECT"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>
+        <bean id="dataSourceForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.66:1521/DLCCSUB"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>   
+        <bean id="dataSourceConForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.63:1521/dmlife"/>
+            <property name="username" value="lf_dmuser"/>
+            <property name="password" value="dmuser123"/>
+        </bean>      
+        <bean id="dataSourceLog" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSource" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogConForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceConForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+    </beans>
+    <beans profile="prd">
+        <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.42:1521/DIRECT"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>
+        <bean id="dataSourceForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.66:1521/DLCCSUB"/>
+            <property name="username" value="DIRECT"/>
+            <property name="password" value="direct!2#"/>
+        </bean>  
+        <bean id="dataSourceConForDlcc" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+            <property name="driverClassName" value="oracle.jdbc.driver.OracleDriver"/>
+            <property name="url" value="jdbc:oracle:thin:@192.168.220.63:1521/dmlife"/>
+            <property name="username" value="lf_dmuser"/>
+            <property name="password" value="dmuser123"/>
+        </bean>       
+        <bean id="dataSourceLog" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSource" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+        <bean id="dataSourceLogConForDlcc" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+            <constructor-arg ref="dataSourceConForDlcc" />
+            <property name="logFormatter">
+                <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                    <property name="loggingType" value="MULTI_LINE" />
+                </bean>
+            </property>
+        </bean>
+    </beans>
+</beans>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CommonPopup">
+    
+    <!-- 상품 공통 조건절 -->
+    <sql id="commonPopupBasicProductWhere">
+        WHERE TPM.PRD_MST_CD = CPM.PRD_MST_CD
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND TPM.PRD_MST_APV_STATE = '${@common.code.Product@STATE_APPROVAL}'
+            AND CPM.PRD_MST_DEL_YN = 'N'
+        <if test="PRD_MST_NO != null and PRD_MST_NO != ''">
+            AND CPM.PRD_MST_NO <![CDATA[<>]]> #{PRD_MST_NO}
+        </if>
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND <![CDATA[(CPM.PRD_MST_ED_DT >= REPLACE(#{searchStartDate},'-', '') AND CPM.PRD_MST_ST_DT <= REPLACE(#{searchEndDate},'-', ''))]]>
+        </if>
+        <if test="searchPrdMstNo != null and searchPrdMstNo != ''">
+            AND CPM.PRD_MST_NO = #{searchPrdMstNo}
+        </if>
+        <if test="searchVdrMstIdx != null and searchVdrMstIdx != ''">
+            AND TPM.VDR_MST_IDX = #{searchVdrMstIdx}
+        </if>
+        <if test="searchPrdMstMdTypeAndSplNm != null and searchPrdMstMdTypeAndSplNm != ''">
+            AND VPM.MODEL_CL_NM || TPM.PRD_MST_SPL_NM LIKE '%' || #{searchPrdMstMdTypeAndSplNm} || '%'
+        </if>
+        <if test="searchPrdMstMd != null and searchPrdMstMd != ''">
+            AND VPM.MODEL_NM = #{searchPrdMstMd}
+        </if>
+        <if test="searchPrdMstType != null and searchPrdMstType != ''">
+            AND CPM.PRD_MST_TYPE = #{searchPrdMstType}
+        </if>
+        <if test="searchPrdCtgIdx != null and searchPrdCtgIdx != ''">
+            AND EXISTS (
+                SELECT *
+                FROM T_PRD_CTG PC
+                WHERE PC.PRD_CTG_IDX = CPM.PRD_CTG_IDX
+                    AND PC.PRD_CTG_USE_YN = 'Y'
+                    AND PC.PRD_CTG_DSP_YN = 'Y'
+                START WITH PC.PRD_CTG_IDX = #{searchPrdCtgIdx} OR PC.PRD_CTG_UP_IDX = #{searchPrdCtgIdx}
+                CONNECT BY PRIOR PC.PRD_CTG_IDX = PC.PRD_CTG_UP_IDX
+            )
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND CPM.PRD_MST_NM LIKE '%' || #{searchPrdMstNm} || '%'
+        </if>
+        <if test="searchPrdMstDplYn != null and searchPrdMstDplYn != ''">
+            AND CPM.PRD_MST_DPL_YN = #{searchPrdMstDplYn}
+        </if>
+    </sql>
+    
+    <!-- 상품 공통 목록 개수 -->
+    <select id="selectCommonPopupBasicProductListCount" parameterType="HashMap" resultType="Integer">
+        /* CommonPopup.selectCommonPopupBasicProductListCount */
+        SELECT COUNT(CPM.PRD_MST_CD)
+        FROM T_PRD_MST TPM, C_PRD_MST CPM, V_PRD_MST VPM
+        <include refid="commonPopupBasicProductWhere"/>
+    </select>
+    
+    <!-- 상품 공통 목록 -->
+    <select id="selectCommonPopupBasicProductList" parameterType="HashMap" resultType="HashMap">
+        /* CommonPopup.selectCommonPopupBasicProductList */
+        SELECT S2.*,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S2.PRD_MST_TYPE) AS PRD_MST_TYPE_NM,
+            CASE 
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_SHOW}' THEN '${@common.code.Product@DISPLAY_SHOW_NM}'
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_HIDE}' THEN '${@common.code.Product@DISPLAY_HIDE_NM}'
+                WHEN PRD_MST_DPL_YN = '${@common.code.Product@DISPLAY_SOLDOUT}' THEN '${@common.code.Product@DISPLAY_SOLDOUT_NM}'
+            END AS PRD_MST_DPL_YN_NM
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    CPM.PRD_MST_NO,
+                    CPM.PRD_MST_TYPE,
+                    CPM.PRD_MST_NM,
+                    VPM.PROD_AMT,
+                    VPM.PROD_CD,
+                    VPM.MODEL_CL_NM,
+                    VPM.MODEL_NM,
+                    TPM.PRD_MST_SPL_NM,
+                    TPM.PRD_MST_MD,
+                    CPM.PRD_MST_DPL_YN
+                FROM T_PRD_MST TPM, C_PRD_MST CPM, V_PRD_MST VPM
+                <include refid="commonPopupBasicProductWhere"/>
+                ORDER BY CPM.PRD_MST_REG_DT DESC
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+    <!-- B2B 공통 조건절 -->
+    <sql id="commonPopupB2bWhere">
+        <where>
+            <if test="searchComNm != null and searchComNm != ''">
+                AND COM_NM LIKE '%' || UPPER(#{searchComNm}) || '%'
+            </if>
+        </where>
+    </sql>
+    
+    <!-- B2B 공통 목록 개수 -->
+    <select id="selectCommonPopupB2bListCount" parameterType="HashMap" resultType="Integer">
+        /* CommonPopup.selectCommonPopupB2bListCount */
+        SELECT COUNT(COM_CD)
+        FROM V_B2B_MST
+        <include refid="commonPopupB2bWhere"/>
+    </select>
+    
+    <!-- B2B 공통 목록 -->
+    <select id="selectCommonPopupB2bList" parameterType="HashMap" resultType="HashMap">
+        /* CommonPopup.selectCommonPopupB2bList */
+        SELECT S2.*
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    COM_CD,
+                    COM_NM,
+                    SALE_TYPE
+                FROM V_B2B_MST
+                <include refid="commonPopupB2bWhere"/>
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- B2B 공통 조건절 -->
+    <sql id="commonPopupDlccWhere">
+        <where>
+            <if test="searchWord != null and searchWord != ''">
+                <choose>
+                    <when test="searchType != null and searchType.equals('P'.toString())">
+                        AND PROD_CD LIKE '%' || UPPER(#{searchWord}) || '%'
+                    </when>
+                    <when test="searchType != null and searchType.equals('M'.toString())">
+                        AND MODEL_CL_NM LIKE '%' || UPPER(#{searchWord}) || '%'
+                    </when>
+                </choose>
+            </if>
+        </where>
+    </sql>    
+    
+    <!-- dlcc 상품 공통 목록 개수 -->
+    <select id="selectCommonPopupDlccCount" parameterType="HashMap" resultType="Integer">
+        /* CommonPopup.selectCommonPopupDlccCount */
+        SELECT COUNT(PROD_CD)
+        FROM V_PRD_MST
+        <include refid="commonPopupDlccWhere"/>
+    </select>
+    
+    <!-- dlcc 상품 공통 목록 -->
+    <select id="selectCommonPopupDlccList" parameterType="HashMap" resultType="HashMap">
+        /* CommonPopup.selectCommonPopupDlccList */
+        SELECT S2.*
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    PROD_CD,
+                    PROD_KIND,
+                    MODEL_CD,
+                    MODEL_CL_NM,
+                    MODEL_NM,
+                    TO_CHAR(PROD_AMT, 'FM9,999,999,999') AS PROD_AMT, 
+                    TO_CHAR(MON_PAY_AMT, 'FM9,999,999,999') AS MON_PAY_AMT,
+                    EXPR_NO,
+                    TO_CHAR(REL_AMT, 'FM9,999,999,999') AS REL_AMT,
+                    REL_CNT,
+                    (SELECT DECODE(CMN_COM_NM, NULL, 'N', 'Y') FROM T_CMM_COM WHERE PROD_CD=CMN_COM_NM AND CMN_COM_UP_IDX='${@common.code.Code@INSTALLMENT_SUPPORT}' AND REL_AMT = 0 AND REL_CNT = 0) AS ZERO_YN
+                FROM V_PRD_MST
+                <include refid="commonPopupDlccWhere"/>
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>    
+    
+</mapper>

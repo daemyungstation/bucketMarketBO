@@ -1,0 +1,366 @@
+package web.bo.manager.controller;
+
+import java.text.MessageFormat;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.CookieName;
+import common.code.LoginState;
+import common.model.Manager;
+import common.model.Manager.ROLE_MANAGER;
+import common.session.SessionsManager;
+import common.session.SessionsMenu;
+import common.util.CookieUtil;
+import common.util.ProfilesUtil;
+import common.util.StringUtil;
+import common.viewer.JSON;
+import lombok.extern.log4j.Log4j2;
+import web.bo.manager.service.LoginManagerService;
+
+/**
+ * @PackageName: web.bo.manager.controller
+ * @FileName : LoginManagerController.java
+ * @Date : 2014. 3. 21.
+ * @프로그램 설명 : 관리자 로그인을 처리하는 Controller Class
+ * @author upleat
+ */
+@Log4j2
+@Controller
+@AccessLevel(ROLE_MANAGER.guest)
+public class LoginManagerController {
+    
+    @Resource(name="loginManagerService")
+    LoginManagerService loginManagerService;
+    
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+
+    @Value("#{resource['administrator.main.page']}")
+    private String administratorMainPage;
+    
+    @Value("#{resource['guest.main.page']}")
+    private String guestMainPage;
+    
+    @Value("#{resource['guest.accredit.page']}")
+    private String guestAccreditPage;
+    
+    @Value("#{resource['scm.term.agree.page']}")
+    private String scmTermAgreePage;
+    
+    @Autowired
+    private ProfilesUtil profileUtil;
+    
+    /**
+     * <pre>
+     * 1. MethodName : login
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 관리자 로그인 페이지로 이동한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 3. 21.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value={"/bo/manager/login", "/scm/manager/login"})
+    public ModelAndView login(HttpServletRequest request, HttpServletResponse response, Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if (SessionsManager.isLogin(request)) {
+            mv.setViewName("redirect:" + serverDomain + administratorMainPage);
+        } else {
+            setSessionClear(request);
+            CookieUtil cookieUtil = new CookieUtil(request);
+            
+            String path = request.getRequestURI().contains("bo") ? "bo" : "scm";
+            response.addCookie(CookieUtil.createCookie(CookieName.LOGIN_PATH_COOKIE_NAME, path, "/", (365 * 24 * 60 * 60)));
+            
+            if (cookieUtil.isExist(CookieName.LOGIN_COOKIE_NAME)) {
+                commandMap.put("ADM_MST_ID", cookieUtil.getValue(CookieName.LOGIN_COOKIE_NAME));
+            }
+            
+            mv.addObject("profiles", profileUtil.getActiveProfiles());
+            mv.addObject("path", path);
+            mv.addObject("commandMap", commandMap);
+            mv.setViewName("bo/manager/login");
+        }
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : loginProc
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 관리자 로그인을 처리한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 3. 21.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginProc", method = RequestMethod.POST)
+    public ModelAndView loginProc(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        int LOGIN_STATE_CODE = StringUtil.getInt(SessionsManager.getSessionValue("LOGIN_STATE_CODE"), LoginState.LOGIN_FAIL);
+        if (LOGIN_STATE_CODE == LoginState.LOGIN_ACCREDIT) { // 이차 로그인 처리
+            // 이차 로그인 인증
+            Manager manager = loginManagerService.loginManagerAccredit(commandMap);
+            if (manager.getLOGIN_STATE_CODE() == LoginState.LOGIN_TERMS_AGREE) { // 제휴업체 약관 동의 페이지
+                mv.setViewName("redirect:" + serverDomain + scmTermAgreePage);
+            } else { // 이차 로그인 인증 결과 페이지
+                mv.addObject("manager", manager);
+                mv.setViewName("bo/manager/loginProc");
+            }
+        } else { // 일차 로그인 처리
+            Manager manager = new Manager();
+            manager.setADM_MST_ID(StringUtil.getString(commandMap, "ADM_MST_ID", "N"));
+            manager.setADM_MST_PWD(StringUtil.getString(commandMap, "ADM_MST_PWD", "N"));
+            manager.setSAVE_ID(StringUtil.getString(commandMap, "SAVE_ID", "N"));
+            // 로그인 처리
+            manager = loginManagerService.loginManagerProc(manager, request, response);
+            if (manager.getLOGIN_STATE_CODE() == LoginState.LOGIN_ACCREDIT) {// 이차 로그인 인증 페이지
+                mv.setViewName("redirect:" + serverDomain + guestAccreditPage); 
+            } else { // 일차 로그인 인증 결과 페이지
+                mv.addObject("manager", manager);
+                mv.setViewName("bo/manager/loginProc");
+            }
+        }
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : loginAccredit
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 관리자 이차인증페이지로 이동한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 10.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginAccredit")
+    public ModelAndView loginAccredit(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if ("".equals(StringUtil.getString(SessionsManager.getSessionValue("ADM_MST_ID")))) {
+            // 세션을 삭제한다.
+            setSessionClear(request);
+            mv.setViewName("redirect:" + getGuestMainPage(request));
+        } else {
+            log.error("activeProfile : [{}]", profileUtil.getActiveProfiles());
+            if (!"prd".equals(profileUtil.getActiveProfiles())) {
+                mv.addObject("ADM_MST_RND", StringUtil.getString(SessionsManager.getSessionValue("ADM_MST_RND")));
+            }
+            mv.setViewName("bo/manager/loginAccredit");
+        }
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : loginHistoryModifyAjax
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 관리자 이차 인증번호를 재 발송한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 10.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginHistoryModifyAjax", method=RequestMethod.POST)
+    public JSON loginHistoryModifyAjax(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        if (!"".equals(StringUtil.getString(SessionsManager.getSessionValue("ADM_MST_ID")))) {
+            
+            commandMap.put("ADM_MST_RND_YN", "N");
+            json.put("isSuccess", (loginManagerService.updateLoginManagerHistory(commandMap) > 0));
+            log.error("activeProfile : [{}]", profileUtil.getActiveProfiles());
+            if (!"prd".equals(profileUtil.getActiveProfiles())) {
+                json.put("ADM_MST_RND", SessionsManager.getSessionValue("ADM_MST_RND"));
+            } else {
+                json.put("ADM_MST_RND", "");
+            }
+            json.put("isLogin", true);
+        } else {
+            json.put("isLogin", false);
+        }
+        return json;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : loginTerm
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 제휴업체 약관동의 페이지로 이동한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginTerm")
+    public ModelAndView loginTerm(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if ("".equals(StringUtil.getString(SessionsManager.getSessionValue("ADM_MST_ID")))) {
+            // 세션을 삭제한다.
+            setSessionClear(request);
+            mv.setViewName("redirect:" + getGuestMainPage(request));
+        } else {
+            mv.addObject("info", loginManagerService.selectLoginManagerVendorAgreeInfo(commandMap));
+            mv.setViewName("bo/manager/loginTerm");
+        }
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : loginTerm
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 제휴업체 이전약관을 조회한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 19.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginTermAjax")
+    public JSON loginTermAjax(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        json.put("info", loginManagerService.selectLoginManagerVendorAgreeInfo(commandMap));
+        return json;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : loginTermModify
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 제휴업체 약관동의일을 수정한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/manager/loginTermModify", method=RequestMethod.POST)
+    public ModelAndView loginTermModify(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if ("".equals(StringUtil.getString(SessionsManager.getSessionValue("ADM_MST_ID")))) {
+            // 세션을 삭제한다.
+            setSessionClear(request);
+            mv.setViewName("redirect:" + getGuestMainPage(request));
+        } else {
+            if ("Y".equals(StringUtil.getString(commandMap, "VDR_AGR_YN", "N"))) {
+                // 제휴업체 약관 등의일 수정
+                loginManagerService.updateLoginManagerVendorAgreeDate(commandMap);
+                
+                Manager manager = new Manager();
+                manager.setLOGIN_STATE_CODE(LoginState.LOGIN_SUCCESS);
+                mv.addObject("manager", manager);
+                mv.setViewName("bo/manager/loginProc");
+            } else {
+                mv.setViewName("redirect:" + serverDomain + scmTermAgreePage);
+            }
+        }
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : logout
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 관리자 로그아웃을 처리한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 4. 1.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     */
+    @RequestMapping(value="/bo/manager/logout")
+    public ModelAndView logout(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 세션을 삭제한다.
+        setSessionClear(request);
+        mv.setViewName("redirect:" + getGuestMainPage(request));
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : getGuestMainPage
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 로그인 페이지(관리자/제휴업체) URL을 반환한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param request
+     * @return
+     * @throws Exception
+     */
+    private String getGuestMainPage (HttpServletRequest request) throws Exception {
+        String path = guestMainPage;
+        CookieUtil cookieUtil = new CookieUtil(request);
+        if (cookieUtil.isExist(CookieName.LOGIN_PATH_COOKIE_NAME)) {
+            path = MessageFormat.format(path, new Object[] { cookieUtil.getValue(CookieName.LOGIN_PATH_COOKIE_NAME) });
+        } else {
+            path = MessageFormat.format(path, new Object[] { "bo" });
+        }
+        return serverDomain + path;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : setSessionClear
+     * 2. ClassName  : LoginManagerController.java
+     * 3. Comment    : 세션을 클리어 한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param request
+     * @return
+     * @throws Exception
+     */
+    private void setSessionClear(HttpServletRequest request) throws Exception {
+        SessionsManager.setSessionClear(request);
+        SessionsMenu.setSessionClear(request);
+    }
+}

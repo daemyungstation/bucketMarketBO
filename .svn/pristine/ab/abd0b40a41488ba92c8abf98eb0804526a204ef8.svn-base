@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerRanking">
+       
+    <!-- 관리자 > 레디플래너 > 랭킹조회 조건절 -->
+    <sql id="plannerRankingWhere">
+        <bind name="PLANNER_STATE_ACTIVE" value="@common.code.Code@PLANNER_STATE_ACTIVE"/>
+        <bind name="PLANNER_STATE_STOP" value="@common.code.Code@PLANNER_STATE_STOP"/>
+        <bind name="PLANNER_STATE_REQUEST_RELEASE" value="@common.code.Code@PLANNER_STATE_REQUEST_RELEASE"/>
+        AND (
+            RDP_MST_STATE = #{PLANNER_STATE_ACTIVE} /* 정상 */ OR RDP_MST_STATE = #{PLANNER_STATE_STOP} /* 이용제한 */ OR RDP_MST_STATE = #{PLANNER_STATE_REQUEST_RELEASE} /* 해제요청 */
+        )
+        <!-- 키워드 -->
+        <if test="searchKeywordValue != null and searchKeywordValue != ''">
+            <!-- 이름 -->
+            <if test="searchKeywordType == 'searchRdpMstMemNm'">
+                AND RDP_MST_MEM_NM LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 아이디 -->
+            <if test="searchKeywordType == 'searchRdpMstId'">
+                AND RDP_MST_ID LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 연락처 -->
+            <if test="searchKeywordType == 'searchRdpMstHp3'">
+                AND RDP_MST_HP3 LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 플래너번호 -->
+            <if test="searchKeywordType == 'searchRdpMstNo'">
+                AND RDP_MST_NO LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+        </if>
+        <!-- 소속 -->
+        <if test="searchRdpMstDmYn != null and searchRdpMstDmYn != ''">
+            AND RDP_MST_DM_YN = #{searchRdpMstDmYn}
+        </if>
+        <!-- 사번 -->
+        <if test="searchRdpMstDmNo != null and searchRdpMstDmNo != ''">
+            AND RDP_MST_DM_NO LIKE '%' || #{searchRdpMstDmNo} || '%'
+        </if>
+        <!-- 홍보계정 URL -->
+        <if test="searchRdpSitAdr != null and searchRdpSitAdr != ''">
+            AND EXISTS ( 
+                SELECT 
+                    * 
+                FROM 
+                    T_RDP_SIT TRS 
+                WHERE 
+                    TRM.RDP_MST_IDX = TRS.RDP_MST_IDX
+                    AND TRS.RDP_SIT_ADR LIKE '%' || #{searchRdpSitAdr} || '%'
+            )
+        </if>
+        <!-- 사업자유형 -->
+        <if test="searchRdpMstBusiCls != null and searchRdpMstBusiCls != ''">
+            AND RDP_MST_BUSI_CLS = #{searchRdpMstBusiCls}
+        </if>
+        <!-- 상태 -->
+        <if test="searchRdpMstState != null and searchRdpMstState != ''">
+            AND RDP_MST_STATE = #{searchRdpMstState}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 랭킹조회 목록 개수 -->
+    <select id="selectPlannerRankingListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerRanking.selectPlannerRankingListCount */ 
+        
+        SELECT 
+            COUNT(1) 
+        FROM (
+        
+            SELECT 
+                W.RDP_MST_IDX,
+                SUM(DECODE(STATUS, 'R', CNT, 0)) AS TOTAL_RECEIPT,
+                SUM(DECODE(STATUS, 'W', CNT, 0)) AS TOTAL_WAITING_TO_JOIN,
+                SUM(DECODE(STATUS, 'J', CNT, 0)) AS TOTAL_JOIN,
+                SUM(DECODE(STATUS, 'C', CNT, 0)) AS TOTAL_CANCEL,
+                SUM(EXPECTED_RETURN) AS TOTAL_EXPECTED_RETURN
+            FROM (
+                SELECT 
+                    TOD.RDP_MST_IDX,
+                    'R' AS STATUS,
+                    COUNT(TOD.RDP_MST_IDX) AS CNT,
+                    0 AS EXPECTED_RETURN
+                FROM 
+                    T_ORD_DLCC TOD,
+                    T_ORD_MST TOM
+                WHERE 
+                    TOD.RDP_MST_IDX IS NOT NULL 
+                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                
+                    <!-- 기간 -->
+                    <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                        AND TOM.ORD_MST_ORD_DT <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00000000'
+                    </if>
+                    <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                        AND TOM.ORD_MST_ORD_DT <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31235959'
+                    </if>
+                    
+                GROUP BY 
+                    TOD.RDP_MST_IDX
+                    
+                UNION 
+                
+                SELECT 
+                    TOD.RDP_MST_IDX,
+                    'W' AS STATUS,
+                    COUNT(TOD.RDP_MST_IDX) AS CNT,
+                    0 AS EXPECTED_RETURN
+                FROM 
+                    T_ORD_DLCC TOD,
+                    T_ORD_MST TOM,
+                    V_ORD_MST VOM
+                WHERE 
+                    TOD.RDP_MST_IDX IS NOT NULL
+                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                    AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                    AND VOM.REG_DM IS NOT NULL
+                
+                    <!-- 기간 -->
+                    <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                        AND VOM.REG_DM <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00000000'
+                    </if>
+                    <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                        AND VOM.REG_DM <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31235959'
+                    </if>
+                    
+                GROUP BY 
+                    TOD.RDP_MST_IDX
+                    
+                UNION 
+                
+                SELECT 
+                    J.RDP_MST_IDX,
+                    'J' AS TYPE,
+                    COUNT(J.RDP_MST_IDX) AS CNT,
+                    SUM(J.EXPECTED_RETURN) AS EXPECTED_RETURN
+                FROM (
+                    SELECT 
+                        RDP_MST_IDX,
+                        'J' AS STATUS,
+                        (
+                        <!-- 
+                         SELECT 
+                            SUM((VRB.PAY_NO_END - VRB.PAY_NO + 1 ) * VRB.AMT)
+                         FROM 
+                            V_B2B_MST VBM,
+                            V_RMT_BASIC VRB
+                         WHERE 
+                            VBM.COM_CD = TOD.SALE_TYPE 
+                            AND VRB.SALE_TYPE = VBM.SALE_TYPE 
+                            AND VRB.PROD_CD = TOD.PROD_CD 
+                            AND VRB.B2B_COMP_CD = TOD.SALE_TYPE
+                            AND VOM.JOIN_DT BETWEEN REPLACE(VRB.PROD_JOIN_DT_STR, '-', '') AND REPLACE(VRB.PROD_JOIN_DT_END, '-', '')
+                        -->
+                         SELECT 
+                            PRD_MST_RDP_CMS
+                         FROM 
+                            C_PRD_MST CPM
+                         WHERE 
+                            CPM.PRD_MST_NO = TOM.PRD_MST_NO  
+                        ) AS EXPECTED_RETURN
+                    FROM 
+                        T_ORD_DLCC TOD,
+                        T_ORD_MST TOM,
+                        V_ORD_MST VOM
+                    WHERE 
+                        TOD.RDP_MST_IDX IS NOT NULL
+                        AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                        AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                        AND VOM.JOIN_DT IS NOT NULL
+                
+                        <!-- 기간 -->
+                        <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                            AND VOM.JOIN_DT <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00'
+                        </if>
+                        <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                            AND VOM.JOIN_DT <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31'
+                        </if>
+                        
+                ) J
+                GROUP BY 
+                    J.RDP_MST_IDX 
+                    
+                UNION 
+                    
+                SELECT 
+                    TOD.RDP_MST_IDX,
+                    'C' AS STATUS,
+                    COUNT(TOD.RDP_MST_IDX) AS CNT,
+                    0 AS EXPECTED_RETURN
+                FROM 
+                    T_ORD_DLCC TOD,
+                    T_ORD_MST TOM,
+                    V_ORD_MST VOM
+                WHERE 
+                    TOD.RDP_MST_IDX IS NOT NULL
+                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                    AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                    AND VOM.RESN_PROC_DAY IS NOT NULL
+                    AND VOM.RESN_PROC_YN = 'Y'
+
+                    <!-- 기간 -->
+                    <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                        AND VOM.RESN_PROC_DAY <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00'
+                    </if>
+                    <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                        AND VOM.RESN_PROC_DAY <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31'
+                    </if>
+                    
+                GROUP BY 
+                    TOD.RDP_MST_IDX
+            ) W
+            GROUP BY 
+                W.RDP_MST_IDX
+        ) S, 
+        T_RDP_MST TRM
+        WHERE 
+            S.RDP_MST_IDX = TRM.RDP_MST_IDX
+            <include refid="plannerRankingWhere" />
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 랭킹조회 목록 -->
+    <resultMap id="resultPlanner" type="HashMap">
+        <id property="RDP_MST_IDX" column="RDP_MST_IDX"/>
+        <result property="RNUM" column="RNUM"/>
+        <result property="RDP_MST_NO" column="RDP_MST_NO"/>
+        <result property="RDP_MST_ID" column="RDP_MST_ID"/>
+        <result property="RDP_MST_MEM_NM" column="RDP_MST_MEM_NM"/>
+        <result property="RDP_MST_DM_YN" column="RDP_MST_DM_YN"/>
+        <result property="RDP_MST_DM_NO" column="RDP_MST_DM_NO"/>
+        <result property="RDP_MST_MAIL" column="RDP_MST_MAIL"/>
+        <result property="RDP_MST_HP1" column="RDP_MST_HP1"/>
+        <result property="RDP_MST_HP2" column="RDP_MST_HP2"/>
+        <result property="RDP_MST_HP3" column="RDP_MST_HP3"/>
+        <result property="RDP_MST_HP" column="RDP_MST_HP"/>
+        <result property="RDP_MST_BUSI_CLS" column="RDP_MST_BUSI_CLS"/>
+        <result property="RDP_MST_BUSI_CLS_NM" column="RDP_MST_BUSI_CLS_NM"/>
+        <result property="RDP_MST_STATE_NM" column="RDP_MST_STATE_NM"/>
+        <result property="RDP_LVL_NM" column="RDP_LVL_NM"/>
+        <result property="TOTAL_RECEIPT" column="TOTAL_RECEIPT"/>
+        <result property="TOTAL_WAITING_TO_JOIN" column="TOTAL_WAITING_TO_JOIN"/>
+        <result property="TOTAL_JOIN" column="TOTAL_JOIN"/>
+        <result property="TOTAL_CANCEL" column="TOTAL_CANCEL"/>
+        <result property="TOTAL_EXPECTED_RETURN" column="TOTAL_EXPECTED_RETURN"/>
+        <result property="RDP_MST_ATV_DT" column="RDP_MST_ATV_DT"/>
+        <result property="RDP_MST_BUSI1" column="RDP_MST_BUSI1"/>
+        <result property="RDP_MST_BUSI2" column="RDP_MST_BUSI2"/>
+        <result property="RDP_MST_BUSI3" column="RDP_MST_BUSI3"/>
+        <result property="RDP_MST_SSN1" column="RDP_MST_SSN1"/>
+        <result property="RDP_MST_SSN2" column="RDP_MST_SSN2"/>
+        <result property="RDP_MST_ZIP_CODE" column="RDP_MST_ZIP_CODE"/>
+        <result property="RDP_MST_DR_ADDR1" column="RDP_MST_DR_ADDR1"/>
+        <result property="RDP_MST_DR_ADDR2" column="RDP_MST_DR_ADDR2"/>
+        <result property="RDP_MST_BNK_CD" column="RDP_MST_BNK_CD"/>
+        <result property="RDP_MST_BNK_ACT" column="RDP_MST_BNK_ACT"/>
+        <result property="RDP_MST_BNK_CD_NM" column="RDP_MST_BNK_CD_NM"/>
+        <result property="RDP_MST_ACT_HDR" column="RDP_MST_ACT_HDR"/>
+        <!-- 홍보계정 -->
+        <collection property="RDP_SIT_ADR_LIST" javaType="java.util.ArrayList" ofType="HashMap">
+            <id property="RDP_SIT_ADR" column="RDP_SIT_ADR"/>
+        </collection>
+    </resultMap>
+    <select id="selectPlannerRankingList" parameterType="HashMap" resultMap="resultPlanner">
+        /* PlannerRanking.selectPlannerRankingList */
+        
+        SELECT 
+            S3.RNUM,
+            S3.RDP_MST_IDX,
+            S3.RDP_MST_NO,
+            S3.RDP_MST_ID,
+            S3.RDP_MST_MEM_NM,
+            S3.RDP_MST_DM_YN,
+            S3.RDP_MST_DM_NO,
+            S3.RDP_MST_HP1,
+            S3.RDP_MST_HP2,
+            S3.RDP_MST_HP3,
+            S3.RDP_MST_HP1 || '-' || S3.RDP_MST_HP2 || '-' || S3.RDP_MST_HP3 AS RDP_MST_HP,
+            S3.RDP_MST_BUSI_CLS,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S3.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S3.RDP_MST_STATE) AS RDP_MST_STATE_NM,
+            S3.TOTAL_RECEIPT,
+            S3.TOTAL_WAITING_TO_JOIN,
+            S3.TOTAL_JOIN,
+            S3.TOTAL_CANCEL,
+            S3.TOTAL_EXPECTED_RETURN,
+            
+            S3.RDP_MST_BUSI1,
+            S3.RDP_MST_BUSI2,
+            S3.RDP_MST_BUSI3,
+            S3.RDP_MST_SSN1,
+            S3.RDP_MST_SSN2,
+            S3.RDP_MST_ZIP_CODE,
+            S3.RDP_MST_DR_ADDR1,
+            S3.RDP_MST_DR_ADDR2,
+            S3.RDP_MST_BNK_CD,
+            S3.RDP_MST_BNK_ACT,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S3.RDP_MST_BNK_CD) AS RDP_MST_BNK_CD_NM,
+            S3.RDP_MST_ACT_HDR,
+            S3.RDP_SIT_ADR
+        FROM (
+        
+            SELECT
+                S2.*
+            FROM (
+            
+                SELECT 
+                    ROWNUM AS RNUM,
+                    S1.*
+                FROM (
+                
+                    SELECT 
+                        S.TOTAL_RECEIPT,
+                        S.TOTAL_WAITING_TO_JOIN,
+                        S.TOTAL_JOIN,
+                        S.TOTAL_CANCEL,
+                        S.TOTAL_EXPECTED_RETURN,
+                        TRM.*,
+                        TRS.RDP_SIT_ADR
+                    FROM (
+                    
+                        SELECT 
+                            W.RDP_MST_IDX,
+                            SUM(DECODE(STATUS, 'R', CNT, 0)) AS TOTAL_RECEIPT,
+                            SUM(DECODE(STATUS, 'W', CNT, 0)) AS TOTAL_WAITING_TO_JOIN,
+                            SUM(DECODE(STATUS, 'J', CNT, 0)) AS TOTAL_JOIN,
+                            SUM(DECODE(STATUS, 'C', CNT, 0)) AS TOTAL_CANCEL,
+                            SUM(EXPECTED_RETURN) AS TOTAL_EXPECTED_RETURN
+                        FROM (
+                            SELECT 
+                                TOD.RDP_MST_IDX,
+                                'R' AS STATUS,
+                                COUNT(TOD.RDP_MST_IDX) AS CNT,
+                                0 AS EXPECTED_RETURN
+                            FROM 
+                                T_ORD_DLCC TOD,
+                                T_ORD_MST TOM
+                            WHERE 
+                                TOD.RDP_MST_IDX IS NOT NULL 
+                                AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                            
+                                <!-- 기간 -->
+                                <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                                    AND TOM.ORD_MST_ORD_DT <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00000000'
+                                </if>
+                                <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                                    AND TOM.ORD_MST_ORD_DT <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31235959'
+                                </if>
+                                
+                            GROUP BY 
+                                TOD.RDP_MST_IDX
+                                
+                            UNION 
+                            
+                            SELECT 
+                                TOD.RDP_MST_IDX,
+                                'W' AS STATUS,
+                                COUNT(TOD.RDP_MST_IDX) AS CNT,
+                                0 AS EXPECTED_RETURN
+                            FROM 
+                                T_ORD_DLCC TOD,
+                                T_ORD_MST TOM,
+                                V_ORD_MST VOM
+                            WHERE 
+                                TOD.RDP_MST_IDX IS NOT NULL
+                                AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                                AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                                AND VOM.REG_DM IS NOT NULL
+                            
+                                <!-- 기간 -->
+                                <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                                    AND VOM.REG_DM <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00000000'
+                                </if>
+                                <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                                    AND VOM.REG_DM <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31235959'
+                                </if>
+                                
+                            GROUP BY 
+                                TOD.RDP_MST_IDX
+                                
+                            UNION 
+                            
+                            SELECT 
+                                J.RDP_MST_IDX,
+                                'J' AS STATUS,
+                                COUNT(J.RDP_MST_IDX) AS CNT,
+                                SUM(J.EXPECTED_RETURN) AS EXPECTED_RETURN
+                            FROM (
+                                SELECT 
+                                    RDP_MST_IDX,
+                                    (
+                                     <!-- 
+                                     SELECT 
+                                        SUM((VRB.PAY_NO_END - VRB.PAY_NO + 1 ) * VRB.AMT)
+                                     FROM 
+                                        V_B2B_MST VBM,
+                                        V_RMT_BASIC VRB
+                                     WHERE 
+                                        VBM.COM_CD = TOD.SALE_TYPE 
+                                        AND VRB.SALE_TYPE = VBM.SALE_TYPE 
+                                        AND VRB.PROD_CD = TOD.PROD_CD 
+                                        AND VRB.B2B_COMP_CD = TOD.SALE_TYPE
+                                        AND VOM.JOIN_DT BETWEEN REPLACE(VRB.PROD_JOIN_DT_STR, '-', '') AND REPLACE(VRB.PROD_JOIN_DT_END, '-', '') 
+                                     -->
+                                     SELECT 
+                                        PRD_MST_RDP_CMS
+                                     FROM 
+                                        C_PRD_MST CPM
+                                     WHERE 
+                                        CPM.PRD_MST_NO = TOM.PRD_MST_NO 
+                                    ) AS EXPECTED_RETURN
+                                FROM 
+                                    T_ORD_DLCC TOD,
+                                    T_ORD_MST TOM,
+                                    V_ORD_MST VOM
+                                WHERE 
+                                    TOD.RDP_MST_IDX IS NOT NULL
+                                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                                    AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                                    AND VOM.JOIN_DT IS NOT NULL
+                            
+                                    <!-- 기간 -->
+                                    <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                                        AND VOM.JOIN_DT <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00'
+                                    </if>
+                                    <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                                        AND VOM.JOIN_DT <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31'
+                                    </if>
+                                    
+                            ) J
+                            GROUP BY 
+                                J.RDP_MST_IDX 
+                    
+                            UNION 
+                                
+                            SELECT 
+                                TOD.RDP_MST_IDX,
+                                'C' AS STATUS,
+                                COUNT(TOD.RDP_MST_IDX) AS CNT,
+                                0 AS EXPECTED_RETURN
+                            FROM 
+                                T_ORD_DLCC TOD,
+                                T_ORD_MST TOM,
+                                V_ORD_MST VOM
+                            WHERE 
+                                TOD.RDP_MST_IDX IS NOT NULL
+                                AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX 
+                                AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX 
+                                AND VOM.RESN_PROC_DAY IS NOT NULL
+                                AND VOM.RESN_PROC_YN = 'Y'
+            
+                                <!-- 기간 -->
+                                <if test="searchStartYear != null and searchStartYear != '' and searchStartMonth != null and searchStartMonth != ''">
+                                    AND VOM.RESN_PROC_DAY <![CDATA[>=]]> #{searchStartYear} || LPAD(#{searchStartMonth}, 2, '0') || '00'
+                                </if>
+                                <if test="searchEndYear != null and searchEndYear != '' and searchEndMonth != null and searchEndMonth != ''">
+                                    AND VOM.RESN_PROC_DAY <![CDATA[<=]]> #{searchEndYear} || LPAD(#{searchEndMonth}, 2, '0') || '31'
+                                </if>
+                                
+                            GROUP BY 
+                                TOD.RDP_MST_IDX
+                        ) W
+                        GROUP BY 
+                            W.RDP_MST_IDX
+                    ) S, 
+                    T_RDP_MST TRM,
+                    T_RDP_SIT TRS
+                    WHERE 
+                        S.RDP_MST_IDX = TRM.RDP_MST_IDX
+                        AND S.RDP_MST_IDX = TRS.RDP_MST_IDX
+                        <include refid="plannerRankingWhere"/>
+                    <choose>
+                        <when test="searchOrderType == 'orderRdpMstAtvDt'">ORDER BY TRM.RDP_MST_ATV_DT DESC</when>
+                        <when test="searchOrderType == 'orderReceiptCount'">ORDER BY S.TOTAL_RECEIPT DESC</when>
+                        <when test="searchOrderType == 'orderWaitToJoinCount'">ORDER BY S.TOTAL_WAITING_TO_JOIN DESC</when>
+                        <when test="searchOrderType == 'orderJoinCount'">ORDER BY S.TOTAL_JOIN DESC</when>
+                        <otherwise>ORDER BY TRM.RDP_MST_ATV_DT DESC</otherwise>
+                    </choose>
+                ) S1
+                
+            ) S2
+                
+            <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+                WHERE RNUM BETWEEN #{startNum} AND #{endNum}
+            </if>
+            
+        ) S3
+    </select>
+    
+</mapper>

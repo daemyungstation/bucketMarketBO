@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ProductDisplay">
+    <!-- 전시상품관리 리스트 조회 -->
+    <select id="selectProductDisplayList" parameterType="hashMap" resultType="hashMap">
+        /* ProductDisplay.selectProductDisplayList */
+        SELECT
+            CPM.PRD_MST_NO,
+            DM.DSP_MST_TXT,
+            CPM.PRD_MST_DPL_YN
+        FROM T_DSP_MST DM, C_PRD_MST CPM
+        WHERE DM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND DM.CMN_COM_IDX = #{CMN_COM_IDX}
+        ORDER BY DM.DSP_MST_SRT
+    </select>
+
+    <!-- 전시상품관리 등록 -->
+    <insert id="insertProductDisplay" parameterType="hashMap">
+        <selectKey keyProperty="DSP_MST_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_DSP_MST_IDX.NEXTVAL AS DSP_MST_IDX  FROM DUAL
+        </selectKey>
+        /* ProductDisplay.insertProductDisplay */
+        INSERT INTO T_DSP_MST (
+            DSP_MST_IDX
+            , CMN_COM_IDX
+            , PRD_MST_NO
+            , DSP_MST_TXT
+            , DSP_MST_SRT
+            , DSP_MST_REG_DT
+            , DSP_MST_REG_IP
+            , DSP_MST_REG_ID
+        ) VALUES (
+            #{DSP_MST_IDX}
+            , #{CMN_COM_IDX}
+            , #{PRD_MST_NO}
+            , #{DSP_MST_TXT}
+            , #{DSP_MST_SRT}
+            , TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            , #{DSP_MST_REG_IP}
+            , #{DSP_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 전시상품관리 삭제 -->
+    <delete id="deleteProductDisplay" parameterType="HashMap">
+        /* ProductDisplay.deleteProductDisplay */
+        DELETE FROM T_DSP_MST
+        WHERE CMN_COM_IDX = #{CMN_COM_IDX}
+    </delete>
+</mapper>

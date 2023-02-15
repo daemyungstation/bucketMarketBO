@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DlccConViewMapper">
+    
+     <resultMap id="CounsellMstMap" type="web.batch.model.CounsellMstModel">
+        <result property="ordMstIdx"        column="ORD_MST_IDX"/>
+        <result property="counsellResult"        column="COUNSELL_RESULT"/>
+        <result property="updateDate"        column="UPDATE_DATE"/>
+        <result property="regDm"        column="REG_DM"/>
+        <result property="counsellMemo"        column="COUNSELL_MEMO"/>
+        <result property="cntrCd"        column="CNTR_CD"/>
+        <result property="consno"        column="CONSNO"/>
+        <result property="actpId"        column="ACTP_ID"/>
+        <result property="b2bCd"        column="B2B_CD"/>
+    </resultMap>
+    <select id="selectCounsellMstList" resultMap="CounsellMstMap">
+    /* DlccViewMapper.selectCounsellMstList [doJob12:상담결과 정보]*/
+        SELECT 
+            DOD.ORD_MST_IDX, 
+            (SELECT TC.CD_NM FROM PS_WILLVI.TB_CD TC WHERE 1=1 AND TC.CD = TCA.DPMS_RESL_CD AND TC.CD_SET_CD = 'CAM090' AND TC.CNTR_CD = 'CCA') AS COUNSELL_RESULT,
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS') AS UPDATE_DATE,
+            CS.RGSN_DTTM AS REG_DM,
+            CS.CONS_MEMO_CNTN AS COUNSELL_MEMO, /* 상담 메모 */
+            CS.CNTR_CD,
+            CS.CONSNO,
+            VBM.B2B_CD,
+            TU.USER_NM AS ACTP_ID
+        FROM TB_DR_I_ORD_DTL@DLCCSUB DOD LEFT OUTER JOIN
+            PS_WILLVI.TB_DIRECT_TARGET DT ON DOD.CI_VAL = DT.CI_VAL AND DOD.ORD_MST_IDX = DT.ORD_MST_IDX INNER JOIN
+            PS_WILLVI.TB_TRGT_CUST_ALCT TCA ON DT.CMPG_ID = TCA.CMPG_ID AND DT.TRGT_LIST_ID = TCA.TRGT_LIST_ID AND DT.SUB_TRGT_LIST_ID = TCA.SUB_TRGT_LIST_ID AND DT.TRGT_CUST_DTPT_ID = TCA.TRGT_CUST_DTPT_ID LEFT OUTER JOIN 
+            PS_WILLVI.TB_TRGT_CUST_DTPT TCD ON TCA.TRGT_LIST_ID = TCD.TRGT_LIST_ID AND TCA.SUB_TRGT_LIST_ID = TCD.SUB_TRGT_LIST_ID AND TCA.TRGT_CUST_DTPT_ID = TCD.TRGT_CUST_DTPT_ID LEFT OUTER JOIN 
+            LF_DMUSER.MEMBER MB ON DOD.CI_VAL = MB.CI_VAL AND MB.DEL_FG = 'N' INNER JOIN 
+            PS_WILLVI.TB_CONS CS ON MB.MEM_NO = CS.MEM_NO INNER JOIN 
+            DR_V_B2B_MST@DLCCSUB VBM ON DOD.B2B_CD  = VBM.B2B_CD LEFT OUTER JOIN 
+            PS_WILLVI.TB_USER TU ON TU.CNTR_CD = CS.CNTR_CD AND CS.ACTP_ID = TU.USER_ID
+    WHERE 1=1 
+        AND (VBM.B2B_CD = '6069' or VBM.B2B_CD = '6076' or VBM.B2B_CD = '6061') 
+    </select>
+    
+
+</mapper>

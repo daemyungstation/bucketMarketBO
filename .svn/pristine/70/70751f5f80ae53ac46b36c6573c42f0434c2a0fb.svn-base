@@ -1,0 +1,41 @@
+#################################################################################################################################
+#################################################################################################################################
+############################################################## PRD ##############################################################
+#################################################################################################################################
+#################################################################################################################################
+
+#CDN \uc5c5\ub85c\ub4dc \uacbd\ub85c- \uc774\ubbf8\uc9c0 \ud30c\uc77c
+file.cdn.upload.path=/bucket/cdn
+file.cdn.upload.path.editor=/bucket/cdn/editor
+#\uc77c\ubc18 \ubb38\uc11c \ud30c\uc77c \ub4f1 \uc5c5\ub85c\ub4dc \uacbd\ub85c
+file.docs.upload.path=/bucket/doc
+#\uc5d1\uc140 \ud30c\uc77c \uc5c5\ub85c\ub4dc \uc774\ubbf8\uc9c0 \uacbd\ub85c
+file.excel.image.upload.path=/bucket/doc
+
+# \ud30c\uc77c \uc5c5\ub85c\ub4dc\ub97c \uc704\ud55c \ud558\uc704 \ub514\ub809\ud1a0\ub9ac \uc124\uc815
+file.path.default=/attach/default
+file.path.product=/attach/product
+file.path.editor=/attach
+file.path.marketing=/attach/marketing
+file.path.display=/attach/display
+file.path.board=/attach/board
+file.path.planner=/attach/planner
+file.path.excel=/attach/excel
+
+# \ud30c\uc77c \uc5c5\ub85c\ub4dc \ud5c8\uc6a9\ud655\uc7a5\uc790
+file.allowed.extensions.default=jpg|jpeg|gif|png|hwp|doc|docx|xls|xlsx|ppt|pptx|pdf
+file.allowed.extensions.image=jpg|jpeg|gif|png
+file.allowed.extensions.editor=jpg|jpeg|gif|png
+file.allowed.extensions.excel=xls
+file.allowed.extensions.video=mp4|webm|ogg|mp3
+file.allowed.extensions.planner=mp4|webm|ogg|jpg|jpeg|gif|png|bmp
+
+# \ud30c\uc77c \uc5c5\ub85c\ub4dc \ud5c8\uc6a9\uc0ac\uc774\uc988
+file.max.byte.size.default=5242880
+file.max.byte.size.image=5242880
+file.max.byte.size.editor=5242880
+file.max.byte.size.excel=5242880
+file.max.byte.size.video=5242880
+
+#\uc0c1\ud488\uc774\ubbf8\uc9c0 \uc378\ub124\uc77c \uc0ac\uc774\uc988
+file.thumbnail.size.product=84|158|750

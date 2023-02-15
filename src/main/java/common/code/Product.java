@@ -1,0 +1,85 @@
+package common.code;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * <pre>
+ * @PackageName: common.code
+ * @FileName : Product.java
+ * @Date : 2020. 3. 26.
+ * @프로그램 설명 : 상품 관련 상수 모음
+ * @author upleat
+ * </pre>
+ */
+public class Product {
+
+    /**************************************************************************
+     * 1. 상품 노출 상태
+     **************************************************************************/
+    static public final String DISPLAY_SHOW = "Y"; // 상품 노출상태 > 노출
+    static public final String DISPLAY_HIDE = "N"; // 상품 노출상태 > 미노출
+    static public final String DISPLAY_SOLDOUT = "S"; // 상품 노출상태 > 일시품절
+    
+    static public final String DISPLAY_SHOW_NM = "노출"; // 상품 노출상태 > 노출
+    static public final String DISPLAY_HIDE_NM = "노출안함"; // 상품 노출상태 > 미노출
+    static public final String DISPLAY_SOLDOUT_NM = "일시품절"; // 상품 노출상태 > 일시품절    
+    static public final Map<String, String> DISPLAYS = new LinkedHashMap<String, String>() {
+        private static final long serialVersionUID = 8106068821874190948L;
+        {
+            put(DISPLAY_SHOW, DISPLAY_SHOW_NM);
+            put(DISPLAY_HIDE, DISPLAY_HIDE_NM);
+            put(DISPLAY_SOLDOUT, DISPLAY_SOLDOUT_NM);
+        }
+    };
+    /**************************************************************************
+     * 2. 상품 승인 상태
+     **************************************************************************/
+    static public final String STATE_STOP = "S"; // 진행대기
+    static public final String STATE_DISAPPROVAL = "N"; // 승인대기
+    static public final String STATE_REJECT = "R"; // 승인거절
+    static public final String STATE_APPROVAL = "A"; // 승인
+    static public final String STATE_UNION = "U"; // 결합
+    
+    static public final String STATE_STOP_NM = "진행대기"; // 진행대기
+    static public final String STATE_DISAPPROVAL_NM = "승인대기"; // 승인대기
+    static public final String STATE_REJECT_NM = "승인거절"; // 승인거절
+    static public final String STATE_APPROVAL_NM = "승인완료"; // 승인
+    static public final String STATE_UNION_NM = "결합"; // 결합
+    
+    static public final Map<String, String> STATES = new LinkedHashMap<String, String>() {
+        private static final long serialVersionUID = -1073238492600650069L;
+        {
+            put(STATE_STOP, STATE_STOP_NM);
+            put(STATE_DISAPPROVAL, STATE_DISAPPROVAL_NM);
+            put(STATE_REJECT, STATE_REJECT_NM);
+            put(STATE_APPROVAL, STATE_APPROVAL_NM);
+            put(STATE_UNION, STATE_UNION_NM);
+        }
+    };
+    /**************************************************************************
+     * 3. 상품 이미지
+     **************************************************************************/
+    static public final String IMG_MAIN = "M";
+    static public final String IMG_SUB = "S";
+    static public final String IMG_MAIN_NM = "FILE_" + IMG_MAIN;
+    static public final String [] IMG_SUB_NMS = { "FILE_" + IMG_SUB + "_1", "FILE_" + IMG_SUB + "_2", "FILE_" + IMG_SUB + "_3", "FILE_" + IMG_SUB + "_4", "FILE_" + IMG_SUB + "_5" };
+    
+    /**************************************************************************
+     * 4. 상품 정렬 구분
+     **************************************************************************/
+    static public final String REG_SORT = "REG";
+    static public final String UPD_SORT = "UPD";
+    static public final String APV_SORT = "APV";
+    static public final String UNI_SORT = "UNI";
+ 
+    /**************************************************************************
+     * 5. 상품 마스터 채번 키
+     **************************************************************************/
+    static public final String PRD_CD = "DMBK";
+    
+    /**************************************************************************
+     * 6. 상조 상품명
+     **************************************************************************/
+    static public final String VDR_MST_DAEMYUNG_NM = "대명아임레디";
+}

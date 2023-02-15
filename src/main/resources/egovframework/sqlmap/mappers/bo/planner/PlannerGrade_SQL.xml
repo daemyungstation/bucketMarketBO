@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerGrade">
+       
+    <!-- 관리자 > 레디플래너 > 등급 기준 -->
+    <select id="selectGradeTerm" parameterType="HashMap" resultType="HashMap">
+        /* PlannerGrade.selectGradeTerm */
+        SELECT
+            RDP_TERM_IDX,
+            RDP_TERM_CD
+        FROM 
+            T_RDP_TERM
+        WHERE
+            ROWNUM = 1
+        ORDER BY RDP_TERM_IDX DESC
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 등급 기준 -->
+    <update id="updateGradeTerm" parameterType="HashMap">
+        /* PlannerGrade.updateGradeTerm */
+        UPDATE T_RDP_TERM SET
+            RDP_TERM_CD = #{RDP_TERM_CD},
+            RDP_TERM_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            RDP_TERM_UPD_IP = #{RDP_TERM_UPD_IP},
+            RDP_TERM_UPD_ID = #{RDP_TERM_UPD_ID}
+        WHERE 
+            RDP_TERM_IDX = #{RDP_TERM_IDX}
+    </update>
+    
+    <!-- 관리자 > 레디플래너 > 등급 목록 -->
+    <select id="selectGradeList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerGrade.selectGradeList */
+        SELECT
+            RL.RDP_LVL_IDX,
+            RL.RDP_LVL_NM,
+            RL.RDP_LVL_STD,
+            RL.RDP_LVL_BNF,
+            NVL(LVL.PLANNER_COUNT, 0) AS PLANNER_COUNT
+        FROM 
+            T_RDP_LVL RL,
+            (SELECT RDP_LVL_IDX , COUNT(1) AS PLANNER_COUNT FROM T_RDP_MST GROUP BY RDP_LVL_IDX) LVL
+        WHERE
+            RL.RDP_LVL_IDX = LVL.RDP_LVL_IDX(+)
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 등급 상세조회 -->
+    <select id="selectGrade" parameterType="HashMap" resultType="HashMap">
+        /* PlannerGrade.selectGrade */
+        SELECT
+            RDP_LVL_IDX,
+            RDP_LVL_NM,
+            RDP_LVL_STD,
+            RDP_LVL_BNF
+        FROM 
+            T_RDP_LVL
+        <where>
+            <if test="searchRdpLvlIdx != null and searchRdpLvlIdx != ''">
+                AND RDP_LVL_IDX = #{searchRdpLvlIdx}
+            </if>
+            <if test="RDP_LVL_IDX != null and RDP_LVL_IDX != ''">
+                AND RDP_LVL_IDX = #{RDP_LVL_IDX}
+            </if>
+        </where>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 등급 수정 -->
+    <update id="updateGrade" parameterType="HashMap">
+        /* PlannerGrade.updateGrade */
+        UPDATE T_RDP_LVL SET
+            RDP_LVL_NM = #{RDP_LVL_NM},
+            RDP_LVL_STD = #{RDP_LVL_STD},
+            RDP_LVL_BNF = #{RDP_LVL_BNF},
+            RDP_LVL_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            RDP_LVL_UPD_IP = #{RDP_LVL_UPD_IP},
+            RDP_LVL_UPD_ID = #{RDP_LVL_UPD_ID}
+        WHERE 
+            RDP_LVL_IDX = #{RDP_LVL_IDX}
+    </update>
+    
+    <!-- 관리자 > 레디플래너 > 플래너 등급 수정 -->
+    <update id="updatePlannerGrade" parameterType="HashMap">
+        /* PlannerGrade.updatePlannerGrade */
+        UPDATE T_RDP_MST SET
+            RDP_LVL_IDX = #{RDP_LVL_IDX}
+        WHERE 
+            RDP_MST_NO = #{RDP_MST_NO}
+    </update>
+    
+</mapper>

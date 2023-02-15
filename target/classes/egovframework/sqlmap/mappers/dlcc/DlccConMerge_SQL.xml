@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DlccConMergeMapper">
+    
+    <!-- DLCCSUB.DR_V_RMT_BASIC : 22 rows (레디플래너 정산기초정보) -->
+    <insert id="insertCounsellMst" parameterType="web.batch.model.CounsellMstModel">
+        /* DlccConMergeMapper.insertCounsellMst */
+        MERGE INTO V_CON_MST
+            USING DUAL
+               ON (
+                    CNTR_CD = #{cntrCd} AND
+                    CONSNO = #{consno} AND
+                    ORD_MST_IDX = #{ordMstIdx}
+                  )
+          
+            WHEN MATCHED THEN
+            
+                UPDATE SET   UPDATE_DATE = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                             COUNSELL_RESULT = #{counsellResult},
+                             COUNSELL_MEMO = #{counsellMemo},
+                             ACTP_ID = #{actpId},
+                             B2B_CD = #{b2bCd}
+            
+            WHEN NOT MATCHED THEN
+                
+                INSERT 
+                (
+                    COUNSELL_IDX,
+                    ORD_MST_IDX,
+                    COUNSELL_RESULT,
+                    UPDATE_DATE,
+                    REG_DM,
+                    COUNSELL_MEMO,
+                    CNTR_CD,
+                    CONSNO,
+                    ACTP_ID,
+                    B2B_CD
+                    <!-- 
+                     -->
+                )
+                
+                VALUES (
+                      SEQ_COUNSELL_IDX.NEXTVAL,
+                    #{ordMstIdx},
+                    #{counsellResult},
+                    #{updateDate},
+                    #{regDm},
+                    #{counsellMemo},
+                    #{cntrCd},
+                    #{consno},
+                    #{actpId},
+                    #{b2bCd}
+                   <!--  
+                     -->
+                )
+    </insert>
+    
+</mapper>

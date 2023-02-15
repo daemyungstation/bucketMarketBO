@@ -1,0 +1,119 @@
+package web.bo.common.controller;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.model.Manager.ROLE_MANAGER;
+import common.util.StringUtil;
+import common.viewer.JSON;
+import egovframework.rte.fdl.property.EgovPropertyService;
+import web.bo.common.service.CommonService;
+import web.dozn.bank.service.DoznBankingService;
+import web.sci.name.model.SciNameCheckRequest;
+import web.sci.name.model.SciNameCheckResult;
+import web.sci.name.service.SciNameCheckService;
+
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class CommonController {
+
+    @Resource(name = "commonService")
+    private CommonService commonService;
+
+    @Resource(name = "doznBankingService")
+    private DoznBankingService doznBankingService;
+
+    @Resource(name = "propertiesService")
+    private EgovPropertyService propertiesService;
+
+    @Resource(name = "sciNameCheckService")
+    private SciNameCheckService sciNameCheckService;
+
+    @Resource(name = "sciPropertiesService")
+    private EgovPropertyService sciPropertiesService;
+
+    /**
+     * <pre>
+     * 1. MethodName : productCategoryListAjax
+     * 2. ClassName  : CommonController.java
+     * 3. Comment    : 상품 카테고리 목록 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 24.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "/bo/common/productCategoryListAjax")
+    public JSON productCategoryListAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        json.put("list", commonService.selectCommonProductCategoryList(commandMap));
+        return json;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : checkBankAccountAjax
+     * 2. ClassName  : CommonController.java
+     * 3. Comment    : 계좌 확인
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 8.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "/bo/common/checkBankAccountAjax.do")
+    public JSON checkBankAccountAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        Map<String, Object> result = doznBankingService.inquireDepositor(commandMap);
+        json.addObject("isSuccess", result.get("result"));
+        json.addObject("depositor", result.get("depositor"));
+        json.addObject("message", result.get("message"));
+        return json;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : checkSsnAjax
+     * 2. ClassName  : CommonController.java
+     * 3. Comment    : 실명확인
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 8.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "/bo/common/checkSsnAjax.do")
+    public JSON checkSsnAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+
+        // 실명확인 파라미터
+        SciNameCheckRequest reqVo = new SciNameCheckRequest();
+        reqVo.setSrvNo(StringUtil.getString(commandMap, "srvNo")); // 서비스 번호
+        reqVo.setJumin1(StringUtil.getString(commandMap, "jumin1"));
+        reqVo.setJumin2(StringUtil.getString(commandMap, "jumin2"));
+        reqVo.setName(StringUtil.getString(commandMap, "name"));
+
+        // 실명확인
+        SciNameCheckResult result = this.sciNameCheckService.nameCheck(request, reqVo);
+
+        json.addObject("isSuccess", result.isSuccess());
+        json.addObject("message", result.getMessage());
+        return json;
+    }
+}

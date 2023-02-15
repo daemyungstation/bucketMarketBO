@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="CommentBoard">
+       
+    <!-- 관리자 > 고객센터 > 가입후기 조건절 -->
+    <sql id="commentBoardWhere">
+        WHERE PR.ORD_MST_IDX = OM.ORD_MST_IDX 
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != '' ">
+            AND PR.PRD_REV_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchProdCd != null and searchProdCd != ''">
+            AND CPM.PROD_CD = #{searchProdCd}
+        </if>
+        <if test="searchPrdMstType != null and searchPrdMstType != ''">
+            AND CPM.PRD_MST_TYPE = #{searchPrdMstType}
+        </if>
+        <if test="searchPrdMstNo != null and searchPrdMstNo != ''">
+            AND CPM.PRD_MST_NO = #{searchPrdMstNo}
+        </if>
+        <if test="searchPrdRevPit != null and searchPrdRevPit != ''">
+            AND PR.PRD_REV_PIT = #{searchPrdRevPit}
+        </if>
+        <if test="searchPrdRevUseYn != null and searchPrdRevUseYn != ''">
+            AND PR.PRD_REV_USE_YN = #{searchPrdRevUseYn}
+        </if>
+        <if test="searchPrdRevBstYn != null and searchPrdRevBstYn != ''">
+            AND PR.PRD_REV_BST_YN = #{searchPrdRevBstYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 고객센터 > 가입후기 목록 개수 -->
+    <select id="selectCommentBoardListCount" parameterType="HashMap" resultType="Integer">
+        /* CommentBoard.selectCommentBoardListCount */
+        SELECT COUNT(PRD_REV_IDX)
+        FROM T_PRD_REV PR, T_ORD_MST OM, C_PRD_MST CPM
+        <include refid="commentBoardWhere"/>
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 가입후기 목록 -->
+    <select id="selectCommentBoardList" parameterType="HashMap" resultType="HashMap">
+        /* CommentBoard.selectCommentBoardList */
+        SELECT
+            S2.RNUM,
+            S2.PRD_REV_IDX,
+            S2.PRD_MST_NO,
+            S2.PROD_CD,
+            S2.PRD_MST_TYPE,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S2.PRD_MST_TYPE) AS PRD_MST_TYPE_NM,
+            S2.PRD_MST_NM,
+            S2.PRD_REV_PIT,
+            (SELECT MEM_NM FROM T_ORD_DLCC WHERE ORD_MST_IDX = S2.ORD_MST_IDX) AS PRD_REV_REG_NM,
+            SUBSTR(S2.PRD_REV_CTS, 1, 10) AS PRD_REV_CTS,
+            S2.PRD_REV_BST_YN,
+            S2.PRD_REV_USE_YN,
+            S2.PRD_REV_REG_DT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    PR.PRD_REV_IDX,
+                    OM.ORD_MST_IDX,
+                    CPM.PRD_MST_NO,
+                    CPM.PRD_MST_TYPE,
+                    CPM.PROD_CD,
+                    CPM.PRD_MST_NM,
+                    PR.PRD_REV_PIT,
+                    PR.PRD_REV_CTS,
+                    PR.PRD_REV_BST_YN,
+                    PR.PRD_REV_USE_YN,
+                    PR.PRD_REV_REG_DT
+                FROM T_PRD_REV PR, T_ORD_MST OM, C_PRD_MST CPM
+                <include refid="commentBoardWhere"/>
+                ORDER BY PR.PRD_REV_REG_DT DESC
+                --ORDER BY DBMS_RANDOM.RANDOM
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 가입후기 상세정보 -->
+    <resultMap id="resultCommentBoardInfo" type="HashMap">
+        <result property="PRD_REV_IDX" column="PRD_REV_IDX"/>
+        <result property="PRD_MST_NO" column="PRD_MST_NO"/>
+        <result property="PRD_MST_NM" column="PRD_MST_NM"/>
+        <result property="MODEL_NM" column="MODEL_NM"/>
+        <result property="PRD_REV_REG_DT" column="PRD_REV_REG_DT"/>
+        <result property="PRD_REV_REG_NM" column="PRD_REV_REG_NM"/>
+        <result property="PRD_REV_USE_YN" column="PRD_REV_USE_YN"/>
+        <result property="PRD_REV_CTS" column="PRD_REV_CTS"/>
+        <result property="CMM_FLE_WEB_PATH" column="CMM_FLE_WEB_PATH"/>
+        <result property="CMM_FLE_ORG_NM" column="CMM_FLE_ORG_NM"/>
+        <result property="PRD_REV_RPL" column="PRD_REV_RPL" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="PRD_REV_BST_YN" column="PRD_REV_BST_YN"/>
+        <result property="PRD_REV_UPD_DT" column="PRD_REV_UPD_DT"/>
+        <result property="PRD_REV_UPD_ID" column="PRD_REV_UPD_ID"/>
+        <result property="PRD_REV_UPD_NM" column="PRD_REV_UPD_NM"/>
+    </resultMap>
+    <select id="selectCommentBoardInfo" parameterType="HashMap" resultMap="resultCommentBoardInfo">
+        /* CommentBoard.selectCommentBoardInfo */
+        SELECT
+            PR.PRD_REV_IDX,
+            CPM.PRD_MST_NO,
+            CPM.PRD_MST_NM,
+            (SELECT TPM.PRD_MST_MD FROM T_PRD_MST TPM WHERE TPM.PRD_MST_CD = CPM.PRD_MST_CD) AS PRD_MST_MD,
+            (
+                SELECT VPM.MODEL_NM
+                FROM V_PRD_MST VPM
+                WHERE VPM.PROD_CD = CPM.PROD_CD
+                    AND VPM.MODEL_CD = CPM.MODEL_CD
+                    AND VPM.PROD_KIND = CPM.PROD_KIND 
+            ) AS MODEL_NM,
+            PR.PRD_REV_REG_DT,
+            (SELECT MEM_NM FROM T_ORD_DLCC WHERE ORD_MST_IDX = OM.ORD_MST_IDX) AS PRD_REV_REG_NM,
+            PR.PRD_REV_USE_YN,
+            PR.PRD_REV_CTS,
+            CF.CMM_FLE_ATT_PATH || CF.CMM_FLE_SYS_NM AS CMM_FLE_WEB_PATH,
+            CF.CMM_FLE_ORG_NM,
+            PR.PRD_REV_RPL,
+            PR.PRD_REV_BST_YN,
+            PR.PRD_REV_UPD_DT,
+            PR.PRD_REV_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_REV_UPD_ID) AS PRD_REV_UPD_NM
+        FROM T_PRD_REV PR, T_ORD_MST OM, C_PRD_MST CPM, T_CMM_FLE CF
+        WHERE PR.ORD_MST_IDX = OM.ORD_MST_IDX 
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND PR.PRD_REV_IDX = CF.CMM_FLE_TB_PK (+)
+            AND CF.CMM_FLE_TB_NM (+) = 'T_PRD_REV'
+            AND CF.CMM_FLE_USE_YN (+) = 'Y'
+            AND PR.PRD_REV_IDX = #{PRD_REV_IDX}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 가입후기 수정 -->
+    <update id="updateCommentBoard" parameterType="HashMap">
+        /* CommentBoard.updateCommentBoard */
+        UPDATE T_PRD_REV SET
+            <if test="PRD_REV_RPL != null and PRD_REV_RPL != ''">
+                PRD_REV_RPL = #{PRD_REV_RPL:CLOB},
+            </if>
+            PRD_REV_USE_YN = #{PRD_REV_USE_YN},
+            PRD_REV_BST_YN = NVL(#{PRD_REV_BST_YN}, 'N'),
+            PRD_REV_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_REV_UPD_ID = #{PRD_REV_UPD_ID},
+            PRD_REV_UPD_IP = #{PRD_REV_UPD_IP}
+        WHERE PRD_REV_IDX = #{PRD_REV_IDX}
+    </update>
+</mapper>

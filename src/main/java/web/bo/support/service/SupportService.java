@@ -1,0 +1,331 @@
+package web.bo.support.service;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @PackageName: web.bo.support.service
+ * @FileName : SupportService.java
+ * @Date : 2020. 5. 27
+ * @프로그램 설명 : 관리자 > 가입결제 조회를 처리하는 Service Interface
+ * @author upleat
+ */
+public interface SupportService {
+    
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportCount
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 27
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectRentalSupportCount(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 27
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectRentalSupportList(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateRentalOption
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 제품타입 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 27
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateRentalOption(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : updateVenderApproval
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렌탈 제휴사 승인
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 27
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateVenderApproval(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalDetailInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렌탈 접수 > 상세정보
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 1.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectRentalDetailInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportMemoList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 렌탈 접 > 상세 메모 조회 
+     * 4. 작성자       : inuscommunity
+     * 5. 작성일       : 2021. 2. 23.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectRentalSupportMemoList(Map<String, Object> commandMap) throws Exception; 
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateInstallInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 설치정보 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 27
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateInstallInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportDeliveryCount
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectSupportDeliveryCount(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportDeliveryList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectSupportDeliveryList(Map<String, Object> commandMap) throws Exception;  
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateDeliveryDate
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 > 배송일자 변경
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateDeliveryDate(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : selectDeliveryStateStr
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 > 배송상태 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public String selectDeliveryStateStr(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectDeliveryDetailInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주조회 > 상세정보
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectDeliveryDetailInfo(Map<String, Object> commandMap) throws Exception;  
+    
+    /**
+     * <pre>
+     * 1. MethodName : insertOrderMemoInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주조회 > 상세정보 > 특이사항 등록 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertOrderMemoInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportBenefitCount
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectSupportBenefitCount(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportBenefitList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectSupportBenefitList(Map<String, Object> commandMap) throws Exception;  
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitBatchTargetList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄 지급 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectBenefitBatchTargetList(Map<String, Object> commandMap) throws Exception;  
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitBatchTargetInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄 지급 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectBenefitBatchTargetInfo(Map<String, Object> commandMap) throws Exception;
+
+    /**
+     * <pre>
+     * 1. MethodName : updateBenefitBatchInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄 지급 조회  
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 22.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateBenefitBatchInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitSupportInfo
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectBenefitSupportInfo(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitSupportList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 지급 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public List<Map<String, Object>> selectBenefitSupportList(Map<String, Object> commandMap) throws Exception;  
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitSupportMemoList
+     * 2. ClassName  : SupportService.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 메모 조회 
+     * 4. 작성자       : inuscommunity
+     * 5. 작성일       : 2021. 1. 27.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectBenefitSupportMemoList(Map<String, Object> commandMap) throws Exception; 
+    
+}

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="IniPay">
+
+    <!-- PG 결제 승인정보 조회 -->
+    <select id="selectIniPayApvInfo" parameterType="HashMap" resultType="HashMap">
+        /* IniPay.selectIniPayApvInfo */
+        SELECT
+            PAY_MST_IDX,
+            PAY_MST_AGT,
+            P_STATUS,
+            P_TID,
+            P_TYPE,
+            P_AUTH_DT,
+            P_MID,
+            P_OID,
+            P_AMT,
+            P_UNAME,
+            P_MNAME,
+            P_NOTI,
+            P_CARD_NUM,
+            P_CARD_ISSUER_CODE,
+            P_CARD_MEMBER_NUM,
+            P_CARD_PURCHASE_CODE,
+            P_FN_CD1,
+            P_AUTH_NO,
+            P_ISP_CARDCODE,
+            P_FN_NM,
+            PAY_MST_REG_DT
+        FROM P_PAY_MST
+        <where>
+            <if test="PAY_MST_IDX != null and PAY_MST_IDX != ''">
+                AND PAY_MST_IDX = #{PAY_MST_IDX}
+            </if>
+            <if test="ORD_MST_IDX != null and ORD_MST_IDX != ''">
+                AND P_OID = #{ORD_MST_IDX}
+            </if>
+            <if test="P_TID != null and P_TID != ''">
+                AND P_TID = #{PAY_MST_IDX}
+            </if>
+        </where>
+    </select>
+
+    <!-- PG 결제 마스터 정보 수정 -->
+    <insert id="updateIniPayMaster" parameterType="HashMap">
+        /* IniPay.updateIniPayMaster */
+        UPDATE T_PAY_MST SET
+            PAY_MST_GBN = '${@common.code.PaymentGate@STATE_CANCEL}',
+            PAY_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+        WHERE ORD_MST_IDX = #{oid}
+            AND PAY_MST_IDX = #{payMstIdx}
+    </insert>
+    
+    <!-- PG 결제 취소 요청 정보 등록 -->
+    <insert id="insertIniPayCnlReq" parameterType="HashMap">
+        <selectKey keyProperty="CNL_REQ_IDX" keyColumn="CNL_REQ_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_CNL_REQ_IDX.NEXTVAL AS CNL_REQ_IDX FROM DUAL
+        </selectKey>
+        /* IniPay.insertIniPayCnlReq */
+        INSERT INTO P_CNL_REQ (
+            CNL_REQ_IDX,
+            PAYMETHOD,
+            TIMESTAMP,
+            CLIENTIP,
+            MID,
+            TID,
+            MSG,
+            HASHDATA,
+            CNL_REQ_REG_DT,
+            CNL_REQ_REG_IP
+        ) VALUES (
+            #{CNL_REQ_IDX},
+            #{paymethod},
+            #{timestamp},
+            #{clientIp},
+            #{mid},
+            #{tid},
+            #{msg},
+            #{hashData},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{CNL_REQ_REG_IP}
+        )
+    </insert>
+    
+    <!-- PG 결제 취소 요청 결과 정보 등록 -->
+    <insert id="insertIniPayCnlReqResult" parameterType="HashMap">
+        /* IniPay.insertIniPayCnlReqResult */
+        INSERT INTO P_CNL_RET (
+            CNL_REQ_IDX,
+            RESULTCODE,
+            RESULTMSG,
+            CNL_RET_REG_DT,
+            CNL_RET_REG_IP
+        ) VALUES (
+            #{CNL_REQ_IDX},
+            #{resultCode},
+            #{resultMsg},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{CNL_RET_REG_IP}
+        )
+    </insert>
+</mapper>

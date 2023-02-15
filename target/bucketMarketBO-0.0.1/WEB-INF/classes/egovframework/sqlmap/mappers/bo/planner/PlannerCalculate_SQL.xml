@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerCalculate">
+       
+    <!-- 관리자 > 레디플래너 > 플래너 정산 조건절 -->
+    <sql id="plannerCalculateWhere">
+        <bind name="PLANNER_STATE_ACTIVE" value="@common.code.Code@PLANNER_STATE_ACTIVE"/>
+        <bind name="PLANNER_STATE_STOP" value="@common.code.Code@PLANNER_STATE_STOP"/>
+        <bind name="PLANNER_STATE_REQUEST_RELEASE" value="@common.code.Code@PLANNER_STATE_REQUEST_RELEASE"/>
+        AND (
+            RDP_MST_STATE = #{PLANNER_STATE_ACTIVE} /* 정상 */ OR RDP_MST_STATE = #{PLANNER_STATE_STOP} /* 이용제한 */ OR RDP_MST_STATE = #{PLANNER_STATE_REQUEST_RELEASE} /* 해제요청 */
+        )
+        <!-- 정산년월 -->
+        <if test="searchCalculateYear != null and searchCalculateYear != '' and searchCalculateMonth != null and searchCalculateMonth != ''">
+            AND VRO.ALOW_DT <![CDATA[=]]> #{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 플래너 정산 실적 조건절 -->
+    <sql id="plannerCalculateHistoryWhere">
+        AND TOD.RDP_MST_IDX = #{RDP_MST_IDX}
+        AND VRO.ALOW_DT <![CDATA[=]]> #{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 정산 목록 개수 -->
+    <select id="selectPlannerCalculateListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerCalculate.selectPlannerCalculateListCount */ 
+        SELECT
+            COUNT(1)
+        FROM (
+            SELECT
+                TRM.RDP_MST_IDX,
+                SUM(VRO.ALOW_AMT) AS TOTAL_ALOW_AMT,
+                MIN(TRO.RMT_ORD_YN) KEEP(DENSE_RANK FIRST ORDER BY TRO.RMT_ORD_YN) RMT_ORD_YN,
+                MIN(TRO.RMT_ORD_UPD_DT) KEEP(DENSE_RANK FIRST ORDER BY TRO.RMT_ORD_UPD_DT) RMT_ORD_UPD_DT
+            FROM
+                T_RDP_MST TRM,
+                T_ORD_DLCC TOD,
+                V_RMT_ORD VRO,
+                T_RMT_ORD TRO
+            WHERE
+                TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                AND TOD.ORD_MST_IDX = VRO.ORD_MST_IDX 
+                AND VRO.RMT_ORD_IDX = TRO.RMT_ORD_IDX (+)
+                <include refid="plannerCalculateWhere" />
+            GROUP BY TRM.RDP_MST_IDX
+        ) S1
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 목록 -->
+    <select id="selectPlannerCalculateList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerCalculate.selectPlannerCalculateList */
+        SELECT
+        
+            S2.RNUM,
+            
+            TRM.RDP_MST_IDX,
+            TRM.RDP_MST_NO,
+            TRM.RDP_MST_ID,
+            TRM.RDP_MST_MEM_NM,
+            TRM.RDP_MST_DM_YN,
+            TRM.RDP_MST_DM_NO,
+            TRM.RDP_MST_HP1,
+            TRM.RDP_MST_HP2,
+            TRM.RDP_MST_HP3,
+            TRM.RDP_MST_HP1 || '-' || TRM.RDP_MST_HP2 || '-' || TRM.RDP_MST_HP3 AS RDP_MST_HP,
+            TRM.RDP_MST_BUSI_CLS,
+            TRM.RDP_MST_BUSI1,
+            TRM.RDP_MST_BUSI2,
+            TRM.RDP_MST_BUSI3,
+            TRM.RDP_MST_SSN1,
+            TRM.RDP_MST_SSN2,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_STATE) AS RDP_MST_STATE_NM,
+            
+            S2.TOTAL_ALOW_AMT,
+            NVL(S2.RMT_ORD_YN, 'N') AS RMT_ORD_YN,
+            S2.RMT_ORD_UPD_DT
+            
+        FROM (
+            SELECT
+                ROWNUM AS RNUM,
+                S1.*
+            FROM (
+                SELECT
+                    TRM.RDP_MST_IDX,
+                    TRO.RMT_ORD_YN,
+                    SUM(VRO.ALOW_AMT) AS TOTAL_ALOW_AMT,
+                    MAX(TRO.RMT_ORD_UPD_DT) KEEP(DENSE_RANK FIRST ORDER BY TRO.RMT_ORD_UPD_DT) RMT_ORD_UPD_DT
+                FROM
+                    T_RDP_MST TRM,
+                    T_ORD_DLCC TOD,
+                    V_RMT_ORD VRO,
+                    T_RMT_ORD TRO
+                WHERE
+                    TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                    AND TOD.ORD_MST_IDX = VRO.ORD_MST_IDX 
+                    AND VRO.RMT_ORD_IDX = TRO.RMT_ORD_IDX (+)
+                    <include refid="plannerCalculateWhere"/>
+                GROUP BY TRM.RDP_MST_IDX, TRO.RMT_ORD_YN
+            ) S1
+        ) S2, T_RDP_MST TRM
+        WHERE 
+            S2.RDP_MST_IDX = TRM.RDP_MST_IDX
+            <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+                AND S2.RNUM BETWEEN #{startNum} AND #{endNum}
+            </if>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 상세 실적 개수 -->
+    <select id="selectPlannerCalculateHistoryListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerCalculate.selectPlannerCalculateHistoryListCount */ 
+        SELECT
+            COUNT(1)
+        FROM
+            T_ORD_DLCC TOD,
+            T_ORD_MST TOM,
+            C_PRD_MST CPM,
+            V_RMT_ORD VRO,
+            T_RMT_ORD TRO
+        WHERE
+            TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND TOD.ORD_MST_IDX = VRO.ORD_MST_IDX 
+            AND VRO.RMT_ORD_IDX = TRO.RMT_ORD_IDX (+)
+            <include refid="plannerCalculateHistoryWhere"/>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 상세 실적 목록 -->
+    <select id="selectPlannerCalculateHistoryList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerCalculate.selectPlannerCalculateHistoryListCount */
+        SELECT 
+        
+            RNUM,
+            
+            MEM_NM,
+            CELL,
+            PRD_MST_NM,
+            ORD_MST_ORD_DT, -- 접수일자
+            JOIN_DT, -- 가입일자
+            KSTBIT, -- 가입상태
+            ALOW_AMT, -- 수당
+            NVL(RMT_ORD_YN, 'N') RMT_ORD_YN,-- 지급여부
+            RMT_ORD_UPD_DT-- 지급일
+            
+        FROM (
+                
+            SELECT
+                ROWNUM AS RNUM,
+                S1.*
+            FROM (
+                SELECT
+                    TOD.MEM_NM,
+                    TOD.CELL,
+                    CPM.PRD_MST_NM,
+                    TOM.ORD_MST_ORD_DT,
+                    VOM.JOIN_DT,
+                    VOM.KSTBIT,
+                    VRO.ALOW_AMT,
+                    TRO.RMT_ORD_YN,
+                    TRO.RMT_ORD_UPD_DT
+                FROM
+                    T_ORD_DLCC TOD,
+                    T_ORD_MST TOM,
+                    C_PRD_MST CPM,
+                    V_ORD_MST VOM,
+                    V_RMT_ORD VRO,
+                    T_RMT_ORD TRO
+                WHERE
+                    TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                    AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                    AND VOM.ORD_MST_IDX = TOD.ORD_MST_IDX 
+                    AND TOD.ORD_MST_IDX = VRO.ORD_MST_IDX 
+                    AND VRO.RMT_ORD_IDX = TRO.RMT_ORD_IDX (+)
+                    <include refid="plannerCalculateHistoryWhere"/>
+            ) S1
+        ) S2
+        WHERE 
+            1=1
+            <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+                AND S2.RNUM BETWEEN #{startNum} AND #{endNum}
+            </if>
+    </select>
+    
+    <!-- 정산 요청 -->
+    <insert id="requestCalculate" parameterType="HashMap">
+        /* PlannerCalculate.requestCalculate */
+        INSERT INTO T_RMT_ORD (
+            RMT_ORD_IDX,
+            RDP_MST_IDX,
+            RMT_ORD_YN,
+            RMT_ORD_REG_DT,
+            RMT_ORD_REG_IP,
+            RMT_ORD_REG_ID
+        )
+        SELECT 
+            VRO.RMT_ORD_IDX,
+            TOD.RDP_MST_IDX,
+            'N',
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RMT_ORD_REG_IP},
+            #{RMT_ORD_REG_ID}
+        FROM 
+            V_RMT_ORD VRO, 
+            T_RMT_ORD TRO, 
+            T_ORD_DLCC TOD 
+        WHERE 
+            VRO.ORD_MST_IDX = TOD.ORD_MST_IDX 
+            AND VRO.RMT_ORD_IDX = TRO.RMT_ORD_IDX (+)
+            AND TRO.RDP_MST_IDX IS NULL
+            AND VRO.ALOW_DT <![CDATA[=]]> #{calculateYear} || LPAD(#{calculateMonth}, 2, '0')
+    </insert>
+    
+</mapper>

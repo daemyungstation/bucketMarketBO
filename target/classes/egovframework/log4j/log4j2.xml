@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info">
+    <Properties>
+        <Property name="layoutPattern">%d %5p [%c] %m%n</Property>
+    </Properties>
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${layoutPattern}" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Root>
+        <!-- log4jdbc -->
+        <Logger name="log4jdbc" level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- egovframework -->
+        <Logger name="egovframework" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- spring -->
+        <Logger name="org.springframework" level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="org.springframework.security.web" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="org.springframework.beans.factory.support" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="com.navercorp" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- bucket market -->
+        <Logger name="web" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="common" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- log SQL with timing information, post execution -->
+        <Logger name="jdbc" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="jdbc.sqlonly" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="jdbc.resultsettable" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="jdbc.sqltiming" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="jdbc.audit" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="jdbc.resultset" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- Batch Logger  -->
+        <Logger name="web.batch.service.impl.BatchManagerServiceImpl" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+    </Loggers>
+</Configuration>

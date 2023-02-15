@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:task="http://www.springframework.org/schema/task"
+    xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+                http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+                http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+                http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd">
+
+    <!-- annotation 스캔 시작 -->
+    <context:component-scan base-package="web, common" use-default-filters="false">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    
+    <!-- ajax json param converter -->
+    <bean id="jacksonMessageConverter" class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"></bean>
+    <!-- URL Mapping 설정 -->
+    <bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+        <property name="customArgumentResolvers">
+            <bean class="common.resolvers.CommandMapArgumentResolver" />
+        </property>
+        <property name="messageConverters">
+            <list>
+                <ref bean="jacksonMessageConverter" />
+                <bean class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter" />
+            </list>
+        </property>
+    </bean>
+    
+    <!-- MappingJacksonJsonView 설정 -->
+    <bean id="jsonView" class="org.springframework.web.servlet.view.json.MappingJackson2JsonView"/>
+
+    <!-- exception 오류 페이지 설정 -->
+    <bean class="common.resolvers.SimpleMappingLogExceptionResolver">
+        <property name="defaultErrorView" value="common/error/error" />
+        <property name="exceptionMappings">
+            <props>
+                <prop key="org.springframework.web.HttpRequestMethodNotSupportedException">common/error/errorNotFund</prop>
+                <prop key="common.exception.AuthenticationException">common/error/errorAuthentication</prop>
+                <prop key="common.exception.AccessException">common/error/errorAccess</prop>
+                <prop key="common.exception.TransactionException">common/error/errorTransaction</prop>
+                <prop key="common.exception.FileUploadException">common/error/errorFileUpload</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <!-- Controllers에서 연결되는 JSP 경로 설정 -->
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/jsp/" />
+        <property name="suffix" value=".jsp" />
+        <property name="order" value="1" />
+    </bean>
+
+	<bean id="downloadView" class="common.viewer.DOWNLOAD" />
+    <!-- download view --> 
+    <bean id="downloadViewResolver" class="org.springframework.web.servlet.view.BeanNameViewResolver">
+        <property name="order" value="0" />
+    </bean>
+
+    <!-- MultipartResolver -->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="maxUploadSize" value="31457280" /> <!-- 10M 파일 용량제한 -->
+        <!-- <property name="maxInMemorySize" value="100000000"/> 해당 경로에 최대로 저장할 수 있는 파일 사이즈 필요시 주석해제 후 사용  -->
+    </bean>
+
+    <aop:aspectj-autoproxy/>
+
+    <!-- 인터셉터 설정 -->
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/**"/>
+            <bean id="webContentInterceptor" class="org.springframework.web.servlet.mvc.WebContentInterceptor">
+                <property name="cacheSeconds" value="0" />
+            </bean>
+        </mvc:interceptor>
+        <mvc:interceptor>
+            <mvc:mapping path="/**"/>
+            <bean class="org.springframework.mobile.device.DeviceResolverHandlerInterceptor"></bean>
+        </mvc:interceptor>
+        <mvc:interceptor>
+            <mvc:mapping path="/**"/>
+            <bean class="common.interceptor.WebAccessInterceptor" />
+        </mvc:interceptor>
+    </mvc:interceptors>
+</beans>

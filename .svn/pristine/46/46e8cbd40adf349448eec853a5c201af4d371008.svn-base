@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info">
+    <Properties>
+        <Property name="layoutPattern">%d %p %c{1.} [%t] %m%n</Property>
+    </Properties>
+    <Appenders>
+        
+        <!-- Standard Out -->
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${layoutPattern}" />
+        </Console>
+
+        <!-- SQL Out -->
+        <RollingFile name="sql" fileName="/data/logs/log4j2/bo/sql/sql.log" filePattern="/data/logs/log4j2/bo/sql/sql-%d{yyyy-MM-dd}_%i.log">
+            <PatternLayout pattern="${layoutPattern}" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="500MB" />                           <!-- 10MB 용량이 초과시 DefaultRolloverStrategy 정책만큼 넘버링 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1" />          <!-- 일별 로그 파일 생성-->
+            </Policies>
+            <DefaultRolloverStrategy max="500" fileIndex="min" />                   <!-- 롤링 파일 500개 까지 생성 -->
+        </RollingFile>
+        
+        <!-- Batch Out -->
+        <RollingFile name="batch" fileName="/data/logs/log4j2/bo/batch/batch.log" filePattern="/data/logs/log4j2/bo/batch/batch-%d{yyyy-MM-dd}_%i.log">
+            <PatternLayout pattern="${layoutPattern}" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="500MB" />                           <!-- 10MB 용량이 초과시 DefaultRolloverStrategy 정책만큼 넘버링 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1" />          <!-- 일별 로그 파일 생성-->
+            </Policies>
+            <DefaultRolloverStrategy max="500" fileIndex="min" />                   <!-- 롤링 파일 500개 까지 생성 -->
+        </RollingFile>
+
+    </Appenders>
+    <Loggers>
+        <Root level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Root>
+        <!-- log4jdbc -->
+        <Logger name="log4jdbc" level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- egovframework -->
+        <Logger name="egovframework" level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- spring -->
+        <Logger name="org.springframework" level="info" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="org.springframework.security.web" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="org.springframework.beans.factory.support" level="warn" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <!-- bucket market -->
+        <Logger name="web" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Logger name="common" level="debug" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+
+        <!-- log SQL with timing information, post execution -->
+        <Logger name="jdbc.sqlonly" level="info" additivity="false">
+            <AppenderRef ref="sql" />
+        </Logger>
+        <Logger name="jdbc.resultsettable" level="warn" additivity="false">
+            <AppenderRef ref="sql" />
+        </Logger>
+        <Logger name="jdbc.sqltiming" level="warn" additivity="false">
+            <AppenderRef ref="sql" />
+        </Logger>
+        <Logger name="jdbc.audit" level="warn" additivity="false">
+            <AppenderRef ref="sql" />
+        </Logger>
+        <Logger name="jdbc.resultset" level="warn" additivity="false">
+            <AppenderRef ref="sql" />
+        </Logger>
+        
+        <!-- Batch -->
+        <Logger name="web.batch.service.impl.BatchManagerServiceImpl" level="info" additivity="false">
+            <AppenderRef ref="batch" />
+        </Logger>
+        
+    </Loggers>
+</Configuration>
+

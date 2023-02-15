@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerNotice">
+       
+    <!-- 관리자 > 레디플래너 > 공지사항 관리 조건절 -->
+    <sql id="plannerNoticeWhere">
+        WHERE 1=1
+        <!-- 상단공지 여부 -->
+        <if test="RDP_NTS_TOP_YN != null and RDP_NTS_TOP_YN != ''">
+            AND RDP_NTS_TOP_YN = #{RDP_NTS_TOP_YN}
+        </if>
+        <!-- 등록일 -->
+        <if test="searchStartDate != null and searchStartDate != ''">
+            AND RDP_NTS_REG_DT <![CDATA[>=]]> REPLACE(#{searchStartDate},'-', '') ||'000000'
+        </if>
+        <if test="searchEndDate != null and searchEndDate != ''">
+            AND RDP_NTS_REG_DT <![CDATA[<=]]> REPLACE(#{searchEndDate},'-', '') ||'235959'
+        </if>
+        <!-- 키워드 -->
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                RDP_NTS_TITLE LIKE '%' || #{searchKeyword} || '%' OR RDP_NTS_CONTENTS LIKE '%' || #{searchKeyword} || '%'
+            )
+        </if>
+        <!-- 상태 -->
+        <if test="searchRdpNtsUseYn != null and searchRdpNtsUseYn != ''">
+            AND RDP_NTS_USE_YN = #{searchRdpNtsUseYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 목록 개수 -->
+    <select id="selectNoticeListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerNotice.selectNoticeListCount */ 
+        SELECT COUNT(RDP_NTS_IDX) 
+        FROM T_RDP_NTS
+        <include refid="plannerNoticeWhere" />
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 목록 -->
+    <select id="selectNoticeList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerNotice.selectNoticeList */
+        SELECT
+        
+            RNUM,
+            
+            RDP_NTS_IDX,
+            RDP_NTS_TITLE,
+            RDP_NTS_TOP_YN,
+            RDP_NTS_READ_CNT,
+            RDP_NTS_USE_YN,
+            RDP_NTS_REG_DT
+                        
+        FROM (
+            SELECT
+                ROWNUM AS RNUM,
+                S.*
+            FROM T_RDP_NTS S
+            <include refid="plannerNoticeWhere"/>
+            ORDER BY RDP_NTS_REG_DT DESC
+        ) S1
+        <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            WHERE RNUM BETWEEN #{startNum} AND #{endNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 상세조회 -->
+    <resultMap id="resultNoticeInfo" type="HashMap">
+        <result property="RDP_NTS_IDX" column="RDP_NTS_IDX"/> <!-- 레디플래너 공지사항 IDX -->
+        <result property="RDP_NTS_TITLE" column="RDP_NTS_TITLE"/> <!-- 제목 -->
+        <result property="RDP_NTS_CONTENTS" column="RDP_NTS_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/> <!-- 내용 -->
+        <result property="RDP_NTS_TOP_YN" column="RDP_NTS_TOP_YN"/> <!-- 상단공지_여부 -->
+        <result property="RDP_NTS_YTB_URL" column="RDP_NTS_YTB_URL"/> <!-- 유튜브링크 -->
+        <result property="RDP_NTS_READ_CNT" column="RDP_NTS_READ_CNT"/> <!-- 조회수 -->
+        <result property="RDP_NTS_USE_YN" column="RDP_NTS_USE_YN"/> <!-- 사용여부 -->
+        <result property="RDP_NTS_REG_DT" column="RDP_NTS_REG_DT"/> <!-- 최초_등록일 -->
+        <result property="RDP_NTS_REG_IP" column="RDP_NTS_REG_IP"/> <!-- 최초_등록_IP -->
+        <result property="RDP_NTS_REG_ID" column="RDP_NTS_REG_ID"/> <!-- 최초_등록자_아이디 -->
+        <result property="RDP_NTS_UPD_DT" column="RDP_NTS_UPD_DT"/> <!-- 최종_수정일 -->
+        <result property="RDP_NTS_UPD_IP" column="RDP_NTS_UPD_IP"/> <!-- 최종_수정_IP -->
+        <result property="RDP_NTS_UPD_ID" column="RDP_NTS_UPD_ID"/> <!-- 최종_수정자_아이디 -->
+        
+        <result property="RDP_NTS_REG_NM" column="RDP_NTS_REG_NM"/> <!-- 최초_등록자_이름 -->
+        <result property="RDP_NTS_UPD_NM" column="RDP_NTS_UPD_NM"/> <!-- 최종_수정자_이름 -->
+        
+    </resultMap>
+    <select id="selectNoticeInfo" parameterType="HashMap" resultMap="resultNoticeInfo">
+        /* PlannerNotice.selectNoticeInfo */
+        SELECT
+        
+            RDP_NTS_IDX,
+            RDP_NTS_TITLE,
+            RDP_NTS_CONTENTS,
+            RDP_NTS_TOP_YN,
+            RDP_NTS_YTB_URL,
+            RDP_NTS_READ_CNT,
+            RDP_NTS_USE_YN,
+            RDP_NTS_REG_DT,
+            RDP_NTS_REG_IP,
+            RDP_NTS_REG_ID,
+            RDP_NTS_UPD_DT,
+            RDP_NTS_UPD_IP,
+            RDP_NTS_UPD_ID,
+            
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = RDP_NTS_REG_ID) AS RDP_NTS_REG_NM,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = RDP_NTS_UPD_ID) AS RDP_NTS_UPD_NM
+                        
+        FROM 
+            T_RDP_NTS
+        WHERE
+            RDP_NTS_IDX = #{RDP_NTS_IDX}
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 조회수 증가 -->
+    <update id="updateReadCount" parameterType="HashMap">
+        /* PlannerNotice.updateReadCount */
+        UPDATE T_RDP_NTS SET
+            RDP_NTS_READ_CNT = (SELECT RDP_NTS_READ_CNT + 1 FROM T_RDP_NTS WHERE RDP_NTS_IDX = #{RDP_NTS_IDX})
+        WHERE 
+            RDP_NTS_IDX = #{RDP_NTS_IDX}
+    </update>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 등록 -->
+    <insert id="insertNotice" parameterType="HashMap">
+        <selectKey keyProperty="RDP_NTS_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_RDP_NTS_IDX.NEXTVAL AS RDP_NTS_IDX FROM DUAL
+        </selectKey> 
+        /* PlannerNotice.insertNotice */
+        INSERT INTO T_RDP_NTS (
+            RDP_NTS_IDX,
+            RDP_NTS_TITLE,
+            RDP_NTS_CONTENTS,
+            RDP_NTS_TOP_YN,
+            RDP_NTS_YTB_URL,
+            RDP_NTS_READ_CNT,
+            RDP_NTS_USE_YN,
+            RDP_NTS_REG_DT,
+            RDP_NTS_REG_IP,
+            RDP_NTS_REG_ID
+        ) VALUES (
+            #{RDP_NTS_IDX},
+            #{RDP_NTS_TITLE},
+            #{RDP_NTS_CONTENTS:CLOB},
+            NVL(#{RDP_NTS_TOP_YN}, 'N'),
+            #{RDP_NTS_YTB_URL},
+            0,
+            NVL(#{RDP_NTS_USE_YN}, 'N'),
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RDP_NTS_REG_IP},
+            #{RDP_NTS_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 레디플래너 > 공지사항 수정 -->
+    <update id="updateNotice" parameterType="HashMap">
+        /* PlannerNotice.updateNotice */
+        UPDATE T_RDP_NTS SET
+            RDP_NTS_TITLE = #{RDP_NTS_TITLE},
+            RDP_NTS_CONTENTS = #{RDP_NTS_CONTENTS:CLOB},
+            RDP_NTS_TOP_YN = NVL(#{RDP_NTS_TOP_YN}, 'N'),
+            RDP_NTS_YTB_URL = #{RDP_NTS_YTB_URL},
+            RDP_NTS_USE_YN = NVL(#{RDP_NTS_USE_YN}, 'N'),
+            RDP_NTS_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            RDP_NTS_UPD_IP = #{RDP_NTS_UPD_IP},
+            RDP_NTS_UPD_ID = #{RDP_NTS_UPD_ID}
+        WHERE 
+            RDP_NTS_IDX = #{RDP_NTS_IDX}
+    </update>
+    
+</mapper>

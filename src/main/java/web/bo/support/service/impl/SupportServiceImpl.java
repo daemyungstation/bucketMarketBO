@@ -1,0 +1,546 @@
+package web.bo.support.service.impl;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import common.code.Code;
+import common.dao.CommonDefaultDAO;
+import common.model.Paging;
+import common.session.SessionsManager;
+import common.util.IPUtil;
+import common.util.JSONUtil;
+import common.util.StringUtil;
+import web.bo.support.service.SupportService;
+import web.message.MessageType;
+import web.message.service.MessageService;
+
+/**
+ * @PackageName: web.bo.support.service.impl
+ * @FileName : SupportServiceImpl.java
+ * @Date : 2020. 5. 27
+ * @프로그램 설명 : 관리자 > 가입결제 조회를 처리하는 Service Implement Class
+ * @author upleat
+ */
+@Service("supportService")
+public class SupportServiceImpl implements SupportService {
+
+    @Resource(name="defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+    
+    @Resource(name = "messageService")
+    private MessageService messageService;
+
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportCount
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#selectRentalSupportCount(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectRentalSupportCount(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectCount("Support.selectRentalSupportCount", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 조회  
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @see web.bo.marketing.service.SupportService#selectRentalSupportList(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectRentalSupportList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("Support.selectRentalSupportList", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateRentalOption
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렌탈 상품 옵션 변경
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#updateRentalOption(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateRentalOption(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        String PARAMS = StringUtil.getString(commandMap, "PARAMS", "");
+        if (!"".equals(PARAMS)) {
+            commandMap.put("ORD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+            commandMap.put("ORD_MST_UPD_IP", IPUtil.getClientIP());
+            List<Map<String, Object>> paramList = JSONUtil.convJSONArrayToListMap(JSONUtil.convStringToJSONArray(PARAMS));
+            for (Map<String, Object> param : paramList) {
+                commandMap.put("ORD_MST_IDX", StringUtil.getString(param, "ORD_MST_IDX", ""));
+                commandMap.put("PRD_OPT_IDX", StringUtil.getString(param, "PRD_OPT_IDX", ""));
+                result += defaultDAO.update("Support.updateRentalOption", commandMap);
+                result += defaultDAO.update("Support.updateBasicInfo", commandMap);
+            }
+        }        
+        return result;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateVenderApproval
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#updateVenderApproval(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public int updateVenderApproval(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        String PARAMS = StringUtil.getString(commandMap, "PARAMS", "");
+        if (!"".equals(PARAMS)) {
+            commandMap.put("ORD_MST_APV_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+            commandMap.put("ORD_MST_APV_IP", IPUtil.getClientIP());
+            List<Map<String, Object>> paramList = JSONUtil.convJSONArrayToListMap(JSONUtil.convStringToJSONArray(PARAMS));
+            for (Map<String, Object> param : paramList) {
+                commandMap.put("ORD_MST_IDX", StringUtil.getString(param, "ORD_MST_IDX", ""));
+                commandMap.put("ORD_MST_VDR_APV", StringUtil.getString(param, "ORD_MST_VDR_APV", ""));
+                result += defaultDAO.update("Support.updateVenderApproval", commandMap);
+                
+                if (Code.RENTAL_APPROVAL == StringUtil.getInt(commandMap, "ORD_MST_VDR_APV")) {
+                    Map<String, Object> info = defaultDAO.select("Support.selectRentalSupportInfo", commandMap);
+                    Map<String, Object> term = defaultDAO.select("Support.selectRentalTermInfo", commandMap);
+                    info.put("TERMS_YN", StringUtil.getString(term, "TERMS_YN", ""));
+                    String a = "";
+                    result += defaultDAO.getSqlSessionForDlcc().insert("DlccOrderMapper.insertOrderDetailDlcc", info);
+                    result += defaultDAO.getSqlSessionForDlcc().insert("DlccOrderMapper.mergeOrderMasterDlcc", info);
+                }
+            }
+        }        
+//        return result;
+        return 1;
+    }  
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalDetailInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 > 상세정보
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 1.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectRentalDetailInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        returnMap.put("info", defaultDAO.select("Support.selectRentalDetailInfo", commandMap));
+        return returnMap;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectRentalSupportMemoList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 렙탈접 > 상세 메모 조회 
+     * 4. 작성자       : inuscommunity
+     * 5. 작성일       : 2021. 2. 23.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectRentalSupportMemoList(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        int totalCount = defaultDAO.selectCount("Support.selectSupportMemoCount", commandMap);
+        returnMap.put("totalCount", totalCount);
+        returnMap.put("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            returnMap.put("mlist", defaultDAO.selectList("Support.selectSupportMemoList", commandMap));
+        }
+        return returnMap;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateInstallInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 > 상세정보 > 설치주소 정보 변경 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#updateInstallInfo(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateInstallInfo(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("ORD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("ORD_MST_UPD_IP", IPUtil.getClientIP());
+        return defaultDAO.update("Support.updateInstallInfo", commandMap);
+    } 
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportDeliveryCount
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#selectSupportDeliveryCount(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectSupportDeliveryCount(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectCount("Support.selectSupportDeliveryCount", commandMap);
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportDeliveryList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회  
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.marketing.service.SupportService#selectSupportDeliveryList(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectSupportDeliveryList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("Support.selectSupportDeliveryList", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateDeliveryDate
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회 > 배송일 변경
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#updateDeliveryDate(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public int updateDeliveryDate(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        String PARAMS = StringUtil.getString(commandMap, "PARAMS", "");
+        if (!"".equals(PARAMS)) {
+            commandMap.put("ORD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+            commandMap.put("ORD_MST_UPD_IP", IPUtil.getClientIP());
+            List<Map<String, Object>> paramList = JSONUtil.convJSONArrayToListMap(JSONUtil.convStringToJSONArray(PARAMS));
+            for (Map<String, Object> param : paramList) {
+                commandMap.put("ORD_MST_IDX", StringUtil.getString(param, "ORD_MST_IDX", ""));
+                commandMap.put("ORD_MST_DLV_ING_DT", StringUtil.getString(param, "ORD_MST_DLV_ING_DT", ""));
+                commandMap.put("ORD_MST_DLV_CPL_DT", StringUtil.getString(param, "ORD_MST_DLV_CPL_DT", ""));
+                commandMap.put("ORD_MST_DLV_WAT_DT", StringUtil.getString(param, "ORD_MST_DLV_WAT_DT", ""));
+                if(!"".equals(StringUtil.getString(commandMap,"ORD_MST_DLV_ING_DT"))){
+                    Map<String, Object> info = defaultDAO.select("Support.selectDeliverySupportInfo", commandMap);
+                    String MEM_NM = StringUtil.getString(info, "MEM_NM");
+                    String CELL = StringUtil.getString(info, "CELL");
+                    String PRD_MST_SPL_NM = StringUtil.getString(info, "PRD_MST_SPL_NM");
+                    String ORD_MST_DLV_ING_DT_OLD = StringUtil.getString(info, "ORD_MST_DLV_ING_DT");
+                    String INSPL_MEM_NM = StringUtil.getString(info, "INSPL_MEM_NM");
+                    String INSPL_ADDR = StringUtil.getString(info, "INSPL_ADDR");
+                    String ORD_MST_DLV_ING_DT_NEW = StringUtil.getString(commandMap, "ORD_MST_DLV_ING_DT").replace("-", "");
+                    String ORD_MST_DLV_ING_DT = StringUtil.getString(commandMap, "ORD_MST_DLV_ING_DT").replace("-", ".");
+                    result += defaultDAO.update("Support.updateDeliveryDate", commandMap);
+                    result += defaultDAO.update("Support.updateDeliveryState", commandMap);
+                    if(!ORD_MST_DLV_ING_DT_NEW.equals(ORD_MST_DLV_ING_DT_OLD)){
+                        this.messageService.sendAlimTalk(MessageType.SUPPORT_DELIVERY, CELL, MEM_NM, PRD_MST_SPL_NM, ORD_MST_DLV_ING_DT, INSPL_MEM_NM, INSPL_ADDR );
+                    }
+                } else {
+                result += defaultDAO.update("Support.updateDeliveryDate", commandMap);
+                result += defaultDAO.update("Support.updateDeliveryState", commandMap);
+                }
+            }
+        }        
+        return result;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectDeliveryStateStr
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주 조회 > 배송상태 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#selectDeliveryStateStr(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public String selectDeliveryStateStr(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectStr("Support.selectDeliveryStateStr", commandMap);
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectDeliveryDetailInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 상품발주조회 > 상세정보
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectDeliveryDetailInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        returnMap.put("info", defaultDAO.select("Support.selectDeliveryDetailInfo", commandMap));
+        int totalCount = defaultDAO.selectCount("Support.selectSupportMemoCount", commandMap);
+        returnMap.put("totalCount", totalCount);
+        returnMap.put("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            returnMap.put("list", defaultDAO.selectList("Support.selectSupportMemoList", commandMap));
+        }
+        return returnMap;
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : insertOrderMemoInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 지원혜택 조회 > 렙탈접수 > 상세정보 > 특이사항 등록 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#insertOrderMemoInfo(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertOrderMemoInfo(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("ORD_MEMO_REG_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("ORD_MEMO_REG_IP", IPUtil.getClientIP());
+        return defaultDAO.update("Support.insertOrderMemoInfo", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportBenefitCount
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) 조회  
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#selectSupportBenefitCount(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectSupportBenefitCount(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectCount("Support.selectSupportBenefitCount", commandMap);
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectSupportBenefitList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) 조회  
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 10.
+     * </pre>
+     *
+     * @see web.bo.marketing.service.SupportService#selectSupportBenefitList(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectSupportBenefitList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("Support.selectSupportBenefitList", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitBatchTargetList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄지급 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectBenefitBatchTargetList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("Support.selectBenefitBatchTargetList", commandMap);
+    } 
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitBatchTargetInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄지급 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectBenefitBatchTargetInfo(Map<String, Object> commandMap) throws Exception {
+        return  defaultDAO.select("Support.selectBenefitBatchTargetInfo", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateBenefitBatchInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 일괄지급 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 22.
+     * </pre>
+     *
+     * @see web.bo.support.service.SupportService#updateBenefitBatchInfo(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public int updateBenefitBatchInfo(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        commandMap.put("ORD_BNF_REG_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("ORD_BNF_REG_IP", IPUtil.getClientIP());
+        
+        String [] PAY_NOs = StringUtil.getArray(commandMap, "PAY_NO");
+        for (int i = 0; i < PAY_NOs.length; i++) {
+            commandMap.put("PAY_NO", PAY_NOs[i]);
+            int cnt = defaultDAO.selectCount("Support.selectBenefitTargetCount", commandMap);
+            if (cnt > 0) {
+                result += defaultDAO.update("Support.updateBenefitBatchInfo", commandMap);
+                Map<String, Object> info = defaultDAO.select("Support.selectBenefitAlimTalkInfo", commandMap);
+                String CELL = StringUtil.getString(info, "CELL");
+                String MEM_NM = StringUtil.getString(info, "MEM_NM");
+                String PRD_MST_SPT_TXT = StringUtil.getString(info, "PRD_MST_SPT_TXT");
+                String PAY_NO = StringUtil.getString(info, "PAY_NO");
+                String ORD_BNF_DT = StringUtil.getString(info, "ORD_BNF_DT");
+                String ORD_MST_VDR_BNF_ID = StringUtil.getString(info, "ORD_MST_VDR_BNF_ID");
+//                this.messageService.sendAlimTalk(MessageType.SUPPORT_BENEFIT, CELL, MEM_NM, PRD_MST_SPT_TXT, PAY_NO, ORD_BNF_DT, ORD_MST_VDR_BNF_ID );
+                
+                String OD_ORD_MST_VDR_BNF_ID = StringUtil.getString(info, "OD_ORD_MST_VDR_BNF_ID");
+                if (!OD_ORD_MST_VDR_BNF_ID.equals(ORD_MST_VDR_BNF_ID)) {
+                    commandMap.put("ORD_DLCC_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+                    commandMap.put("ORD_DLCC_UPD_IP", IPUtil.getClientIP());
+                    result += defaultDAO.update("Support.updateOrderBenefitIDInfo", commandMap);
+                }
+            }
+        }
+
+        return result;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitSupportInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectBenefitSupportInfo(Map<String, Object> commandMap) throws Exception {
+        return  defaultDAO.select("Support.selectBenefitSupportInfo", commandMap);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBenefitSupportList
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 지급 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 15.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectBenefitSupportList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("Support.selectBenefitSupportList", commandMap);
+    } 
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectDeliveryDetailInfo
+     * 2. ClassName  : SupportServiceImpl.java
+     * 3. Comment    : 관리자 > 발주혜택 조회 > 혜택/지원(포인트) > 상세 메모 조회 
+     * 4. 작성자       : inuscommunity
+     * 5. 작성일       : 2021. 1. 27.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectBenefitSupportMemoList(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        int totalCount = defaultDAO.selectCount("Support.selectSupportMemoCount", commandMap);
+        returnMap.put("totalCount", totalCount);
+        returnMap.put("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            returnMap.put("mlist", defaultDAO.selectList("Support.selectSupportMemoList", commandMap));
+        }
+        return returnMap;
+    }
+    
+}

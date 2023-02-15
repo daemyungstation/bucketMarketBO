@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CategoryDisplay">
+    <!-- 관리자 > 전시관리 > 전시카테고리 > 목록  -->
+    <select id="selectCategoryDisplayList" parameterType="HashMap" resultType="HashMap">
+        /* CategoryDisplay.selectCategoryDisplayList */
+        SELECT
+            PRD_CTG_IDX,
+            PRD_CTG_NM,
+            PRD_CTG_LEVEL,
+            PRD_CTG_UP_IDX,
+            PRD_CTG_TOP_IDX,
+            <if test="(PRD_CTG_LEVEL == null or PRD_CTG_LEVEL == '') and (PRD_CTG_UP_IDX == null or PRD_CTG_UP_IDX == '')">
+            CONNECT_BY_ISLEAF AS PRD_CTG_LEAF,
+            SUBSTR(SYS_CONNECT_BY_PATH(PRD_CTG_NM, ' > '), 4) AS PRD_CTG_PATH,
+            </if>
+            PRD_CTG_SORT,
+            PRD_CTG_DSP_YN,
+            PRD_CTG_USE_YN,
+            PRD_CTG_KWD,
+            PRD_CTG_REG_DT,
+            PRD_CTG_REG_IP,
+            PRD_CTG_REG_ID,
+            PRD_CTG_UPD_DT,
+            PRD_CTG_UPD_IP,
+            PRD_CTG_UPD_ID
+        FROM T_PRD_CTG
+        <where>
+            <if test="PRD_CTG_USE_YN != null and PRD_CTG_USE_YN != ''">
+                AND PRD_CTG_USE_YN = #{PRD_CTG_USE_YN}
+            </if>
+            <if test="PRD_CTG_DSP_YN != null and PRD_CTG_DSP_YN != ''">
+                AND PRD_CTG_DSP_YN = #{PRD_CTG_DSP_YN}
+            </if>
+        </where>
+        <choose>
+            <when test="PRD_CTG_LEVEL != null and PRD_CTG_LEVEL != ''">
+                WHERE PRD_CTG_LEVEL = #{PRD_CTG_LEVEL}
+                ORDER BY PRD_CTG_SORT
+            </when>
+            <when test="PRD_CTG_UP_IDX != null and PRD_CTG_UP_IDX != ''">
+                WHERE PRD_CTG_UP_IDX = #{PRD_CTG_UP_IDX}
+                ORDER BY PRD_CTG_SORT
+            </when>
+            <otherwise>
+                START WITH PRD_CTG_UP_IDX = 0
+                CONNECT BY PRIOR PRD_CTG_IDX =  PRD_CTG_UP_IDX
+                ORDER SIBLINGS BY PRD_CTG_LEVEL, PRD_CTG_SORT
+            </otherwise>
+        </choose>
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 전시카테고리 > 상세정보  -->
+    <select id="selectCategoryDisplayInfo" parameterType="HashMap" resultType="HashMap">
+        /* CategoryDisplay.selectCategoryDisplayInfo */
+        SELECT
+            PRD_CTG_IDX,
+            PRD_CTG_NM,
+            PRD_CTG_LEVEL,
+            PRD_CTG_UP_IDX,
+            PRD_CTG_TOP_IDX,
+            PRD_CTG_SORT,
+            PRD_CTG_DSP_YN,
+            PRD_CTG_USE_YN,
+            PRD_CTG_KWD,
+            PRD_CTG_REG_DT,
+            PRD_CTG_REG_IP,
+            PRD_CTG_REG_ID,
+            PRD_CTG_UPD_DT,
+            PRD_CTG_UPD_IP,
+            PRD_CTG_UPD_ID,
+            (
+                <![CDATA[
+                SELECT TO_CHAR(REPLACE(WM_CONCAT(PRD_CTG_NM), ',', ' > ')) AS PRD_CTG_PATH
+                FROM (
+                    SELECT PRD_CTG_NM
+                    FROM T_PRD_CTG S1
+                    WHERE PRD_CTG_USE_YN = 'Y'
+                    START WITH PRD_CTG_IDX = #{PRD_CTG_IDX}
+                    CONNECT BY PRIOR PRD_CTG_UP_IDX = PRD_CTG_IDX
+                    ORDER BY PRD_CTG_LEVEL, PRD_CTG_SORT
+                )
+                ]]>
+            ) AS PRD_CTG_PATH
+        FROM T_PRD_CTG
+        WHERE PRD_CTG_IDX = #{PRD_CTG_IDX}
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 전시카테고리 > 등록  -->
+    <insert id="insertCategoryDisplay" parameterType="HashMap">
+        <selectKey keyColumn="PRD_CTG_IDX" keyProperty="PRD_CTG_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_PRD_CTG_IDX.NEXTVAL AS PRD_CTG_IDX FROM DUAL
+        </selectKey>
+        /* CategoryDisplay.insertCategoryDisplay */
+        INSERT INTO T_PRD_CTG (
+            PRD_CTG_IDX,
+            PRD_CTG_NM,
+            PRD_CTG_LEVEL,
+            PRD_CTG_UP_IDX,
+            PRD_CTG_TOP_IDX,
+            PRD_CTG_SORT,
+            PRD_CTG_USE_YN,
+            PRD_CTG_DSP_YN,
+            PRD_CTG_REG_DT,
+            PRD_CTG_REG_IP,
+            PRD_CTG_REG_ID
+        ) VALUES (
+            #{PRD_CTG_IDX},
+            #{PRD_CTG_NM},
+            NVL(#{PRD_CTG_LEVEL}, -1) + 1,
+            NVL(#{PRD_CTG_UP_IDX}, 0),
+            NVL(#{PRD_CTG_TOP_IDX}, 0),
+            (
+                SELECT NVL(MAX(PRD_CTG_SORT), 0) + 1
+                FROM T_PRD_CTG
+                WHERE PRD_CTG_UP_IDX = NVL(#{PRD_CTG_UP_IDX}, 0)
+            ),
+            'Y',
+            'N',
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{PRD_CTG_REG_IP},
+            #{PRD_CTG_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 전시관리 > 전시카테고리 > 수정  -->
+    <update id="updateCategoryDisplay" parameterType="HashMap">
+        /* CategoryDisplay.updateCategoryDisplay */
+        UPDATE T_PRD_CTG SET
+            PRD_CTG_NM = #{PRD_CTG_NM},
+            PRD_CTG_USE_YN = #{PRD_CTG_USE_YN},
+            PRD_CTG_DSP_YN = #{PRD_CTG_DSP_YN},
+            PRD_CTG_KWD = #{PRD_CTG_KWD},
+            PRD_CTG_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_CTG_UPD_IP = #{PRD_CTG_UPD_IP},
+            PRD_CTG_UPD_ID = #{PRD_CTG_UPD_ID}
+        WHERE PRD_CTG_IDX = #{PRD_CTG_IDX}
+    </update>
+    
+    <!-- 관리자 > 전시관리 > 전시카테고리 > 순서 수정  -->
+    <update id="updateCategoryDisplaySort" parameterType="HashMap">
+        /* CategoryDisplay.updateCategoryDisplaySort */
+        UPDATE T_PRD_CTG SET
+            PRD_CTG_SORT = #{PRD_CTG_SORT},
+            PRD_CTG_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_CTG_UPD_IP = #{PRD_CTG_UPD_IP},
+            PRD_CTG_UPD_ID = #{PRD_CTG_UPD_ID}
+        WHERE PRD_CTG_IDX = #{PRD_CTG_IDX}
+    </update>
+</mapper>

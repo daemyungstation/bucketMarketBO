@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerCounsell">
+
+    <!-- 관리자 > 레디플래너 > 활동 플래너 조건절 -->
+    <sql id="plannerCounsellWhere">
+        WHERE 1=1
+        <!-- 신청일 -->
+        <if test="isRdp == 0">
+            AND TRM.RDP_MST_IDX IS NOT NULL AND  VCM.B2B_CD IN ( '6069', '6076' )
+        </if>
+        <if test="searchStartDate != null and searchStartDate != ''">
+            AND TO_CHAR(TOD.REG_DM,'yyyy-MM-dd') <![CDATA[>=]]> #{searchStartDate}
+        </if>
+        <if test="searchEndDate != null and searchEndDate != ''">
+            AND TO_CHAR(TOD.REG_DM,'yyyy-MM-dd') <![CDATA[<=]]> #{searchEndDate}
+        </if>
+        <if test="searchKeywordValue != null and searchKeywordValue != ''">
+            <!-- 레디플래너 번호 -->
+            <if test="searchKeywordType == 'searchRdpMstNo'">
+                AND TRM.RDP_MST_NO LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 레디플래너 고유번호 -->
+            <if test="searchKeywordType == 'searchRdpMstIdx'">
+                AND TRM.RDP_MST_IDX LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 고객명 -->
+            <if test="searchKeywordType == 'searchMemNm'">
+                AND TOD.MEM_NM LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- 고객 연락처 -->
+            <if test="searchKeywordType == 'searchCell'">
+                <!-- AND REGEXP_REPLACE(TOD.CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') = #{searchKeywordValue} -->
+                AND SUBSTR(TOD.CELL,8,13) LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- DLCC 회원코드 -->
+            <if test="searchKeywordType == 'searchDlccNo'">
+                AND VOM.ACCNT_NO LIKE '%' || #{searchKeywordValue} || '%'
+            </if>
+            <!-- DLCC 상품코드 -->
+            <if test="searchKeywordType == 'searchDlccCode'">
+                AND TOD.PROD_CD = #{searchKeywordValue}
+            </if>
+        </if>
+
+        <!--
+        dlcc 상품코드
+        <if test="searchDlccCode != null and searchDlccCode != ''">
+            AND RDP_MST_BUSI_CLS = #{searchDlccCode}
+        </if> -->
+    </sql>
+
+    <!-- 관리자 > 레디플래너 > 활동 플래너 목록 개수 -->
+    <select id="selectPlannerCounsellListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerOrderReceipt.selectPlannerCounsellListCount */
+        SELECT COUNT(*) as totalCount
+        FROM
+        (
+            SELECT
+                B.*
+            FROM
+            (
+                SELECT
+                    ROWNUM AS RNUM,A.*
+                FROM(
+                SELECT
+                    TOD.MEM_NM,  REGEXP_REPLACE(TOD.CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL, CPM.PRD_MST_NM, TOD.REG_DM,
+                    TRM.RDP_MST_NO, TOD.RDP_MST_IDX, TRM.RDP_MST_MEM_NM, VOM.ACCNT_NO, (SELECT CMN_COM_NM FROM T_CMM_COM CC WHERE CMN_COM_UP_IDX = '${@common.code.Code@MEMBER_JOIN}' AND CMN_COM_ETC1 = VOM.KSTBIT) AS KSTBIT,
+                    VCM.ORD_MST_IDX, VCM.COUNSELL_RESULT, VCM.COUNSELL_MEMO, VCM.UPDATE_DATE
+                FROM T_ORD_DLCC TOD
+                            LEFT OUTER JOIN T_ORD_MST TOM ON(TOD.ORD_MST_IDX = TOM.ORD_MST_IDX)
+                            LEFT OUTER JOIN T_RDP_MST TRM ON(TOD.RDP_MST_IDX = TRM.RDP_MST_IDX)
+                            LEFT OUTER JOIN C_PRD_MST CPM ON(TOM.PRD_MST_NO = CPM.PRD_MST_NO)
+                            LEFT OUTER JOIN V_ORD_MST VOM ON(TOD.ORD_MST_IDX = VOM.ORD_MST_IDX)
+                            LEFT JOIN
+                            (SELECT
+                                *
+                            FROM (
+                                SELECT
+                                     V.UPDATE_DATE,V.B2B_CD,V.ORD_MST_IDX,V.COUNSELL_RESULT,V.COUNSELL_MEMO,V.REG_DM , ROW_NUMBER() OVER (PARTITION BY V.ORD_MST_IDX ORDER BY V.REG_DM DESC) AS RN
+                                FROM V_CON_MST V
+                            )A
+                            WHERE A.RN = 1) VCM ON (TOD.ORD_MST_IDX = VCM.ORD_MST_IDX)
+                <include refid="plannerCounsellWhere"/>
+                ORDER BY TOD.REG_DM DESC) A
+            )B
+        )
+    </select>
+
+    <!-- 관리자 > 레디플래너 > 활동 플래너 목록 -->
+    <resultMap id="resultPlanner" type="HashMap">
+        <id property="RDP_MST_IDX" column="RDP_MST_IDX"/>
+        <result property="RNUM" column="RNUM"/>
+        <result property="MEM_NM" column="MEM_NM"/>
+        <result property="CELL" column="CELL"/>
+        <result property="PRD_MST_NM" column="PRD_MST_NM"/>
+        <result property="REG_DM" column="REG_DM"/>
+        <result property="RDP_MST_NO" column="RDP_MST_NO"/>
+        <result property="RDP_MST_IDX" column="RDP_MST_IDX"/>
+        <result property="RDP_MST_MEM_NM" column="RDP_MST_MEM_NM"/>
+        <result property="COUNSELL_RESULT" column="COUNSELL_RESULT"/>
+        <result property="COUNSELL_MEMO" column="COUNSELL_MEMO"/>
+    </resultMap>
+
+    <!-- PAY_NO 추가 . 20220209 -->
+    <select id="selectPlannerCounsellList" parameterType="HashMap" resultMap="resultPlanner">
+        /* PlannerOrderReceipt.selectPlannerCounsellList */
+        SELECT
+            B.*,b.rnum
+        FROM
+        (
+        SELECT
+            ROWNUM AS RNUM,A.*
+        FROM(
+
+        SELECT
+
+            REGEXP_REPLACE(TRIM(TOD.MEM_NM), '(.{1})(.+)(.{1})',  CASE WHEN #{doMasking} = '1' THEN '\1' || lpad('*',length(TRIM(TOD.MEM_NM) )-2,'*') || '\3' ELSE '\1\2\3' END )  AS MEM_NM,
+            REGEXP_REPLACE(TOD.CELL, '(02|.{3})(.+)(.{4})',  CASE WHEN #{doMasking} = '1' THEN '\1-****-\3' ELSE '\1-\2-\3' END ) AS CELL,
+            CPM.PRD_MST_NM,
+            TO_CHAR(TOD.REG_DM,'YYYYMMDDHH24MISS') AS REG_DM,
+            TRM.RDP_MST_NO, TOD.RDP_MST_IDX, TRM.RDP_MST_MEM_NM, TOD.SELLER_NAME, VOM.ACCNT_NO,
+            (SELECT CMN_COM_NM FROM T_CMM_COM CC WHERE CMN_COM_UP_IDX = '${@common.code.Code@MEMBER_JOIN}' AND CMN_COM_ETC1 = VOM.KSTBIT) AS KSTBIT,
+            VCM.ORD_MST_IDX,VCM.COUNSELL_RESULT,VCM.COUNSELL_MEMO,VCM.UPDATE_DATE,
+            (SELECT NVL(MAX(PAY_NO),0) FROM V_ORD_DPS VOD WHERE VOD.ORD_MST_IDX = TOD.ORD_MST_IDX) AS PAY_NO,
+            TOD.UTM_SOURCE ,TOD.UTM_MEDIUM ,TOD.UTM_CAMPAIGN ,TOD.UTM_TERM ,TOD.UTM_CONTENT
+        FROM T_ORD_DLCC TOD
+                    LEFT OUTER JOIN T_ORD_MST TOM ON(TOD.ORD_MST_IDX = TOM.ORD_MST_IDX)
+                    LEFT OUTER JOIN T_RDP_MST TRM ON(TOD.RDP_MST_IDX = TRM.RDP_MST_IDX)
+                    LEFT OUTER JOIN C_PRD_MST CPM ON(TOM.PRD_MST_NO = CPM.PRD_MST_NO)
+                    LEFT OUTER JOIN V_ORD_MST VOM ON(TOD.ORD_MST_IDX = VOM.ORD_MST_IDX)
+                    LEFT JOIN
+                    (SELECT
+                        *
+                    FROM (
+                        SELECT
+                            V.UPDATE_DATE,V.B2B_CD,V.ORD_MST_IDX,V.COUNSELL_RESULT,V.COUNSELL_MEMO,V.REG_DM , ROW_NUMBER() OVER (PARTITION BY V.ORD_MST_IDX ORDER BY V.REG_DM DESC) AS RN
+                        FROM V_CON_MST V
+                    )A
+                    WHERE A.RN = 1) VCM ON (TOD.ORD_MST_IDX = VCM.ORD_MST_IDX)
+        <include refid="plannerCounsellWhere"/>
+        ORDER BY TOD.REG_DM DESC) A
+        )B
+        WHERE 1=1
+        <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            AND B.RNUM BETWEEN #{startNum} AND #{endNum}
+        </if>
+    </select>
+
+    <select id="selectUpadate" parameterType="HashMap" resultType="String">
+        SELECT
+            MAX(update_date)
+        FROM V_CON_MST
+    </select>
+
+    <!-- 관리자 > 레디플래너 > 메모 상세 개수 -->
+    <select id="selectCounsellHistoryListCount" parameterType="HashMap" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM V_CON_MST
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+
+    <!-- 관리자 > 레디플래너 > 메모 상세 개수 -->
+    <select id="selectCounsellHistoryList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            ACTP_ID,COUNSELL_MEMO,REG_DM
+        FROM V_CON_MST
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+        ORDER BY REG_DM DESC
+    </select>
+
+</mapper>

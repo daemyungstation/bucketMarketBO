@@ -1,0 +1,327 @@
+package web.bo.order.controller;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.Const;
+import common.model.Manager.ROLE_MANAGER;
+import common.model.Paging;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.viewer.EXCEL;
+import common.viewer.JSON;
+import lombok.extern.log4j.Log4j2;
+import web.bo.common.service.CommonService;
+import web.bo.order.service.OrderService;
+import web.pg.service.IniPayService;
+
+/**
+ * @PackageName: web.bo.order.controller
+ * @FileName : OrderController.java
+ * @Date : 2020. 05. 25
+ * @프로그램 설명 : 관리자 > 가입결제 조회 > 가입 접수를 처리하는 Controller Class
+ * @author upleat
+ */
+@Log4j2
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class OrderController {
+
+    @Resource(name="orderService")
+    private OrderService orderService;
+    
+    @Resource(name="iniPayService")
+    private IniPayService iniPayService;
+    
+    @Resource(name="commonService")
+    private CommonService commonService;
+    
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderReceiptList
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 접수 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/order/orderReceiptList")
+    public ModelAndView orderReceiptList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 상품 유형 코드 조회
+        mv.addObject("codeList", commonService.selectCode("PRODUCT_TYPE_CODE"));
+        int totalCount = orderService.selectReceiptOrderCount(commandMap);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            // 접수 목록
+            mv.addObject("list", orderService.selectReceiptOrderList(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/order/orderReceiptList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderReceiptExcelDownload
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 엑셀다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */    
+    @RequestMapping(value="/bo/order/orderReceiptExcelDownload")
+    public EXCEL orderReceiptExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.orderService.selectReceiptOrderList(commandMap);
+
+        if (list != null) {
+            excel.put("fileName", "daemyung_receipt_order_" + DateUtil.getCurrentDateTime());
+            for(Map<String, Object> row : list) {
+                String  RDP_MST_IDX = StringUtil.getString(row, "RDP_MST_IDX", "");
+                if (RDP_MST_IDX.equals("")) {
+                    RDP_MST_IDX = "";
+                } else {
+                    RDP_MST_IDX = StringUtil.getString(row, "RDP_MST_IDX", "");
+                }
+            }
+            excel.put("list", list);
+            String [] headerTitle = {"NO",      "주문번호",      "온라인상품명",     "고객명",   "연락처",     "기간계 상품코드", "모델분류",        "지원혜택",          "모델명",     "옵션",         "추가정보",              "회원상태",  "접수일",            "레디플래너 번호", "UTM_SOURCE",  "UTM_MEDIUM",  "UTM_CAMPAIGN",  "UTM_TERM",  "UTM_CONTENT"};
+            String [] cellField =   {"RNUM",    "ORD_MST_IDX", "PRD_MST_NM",    "MEM_NM", "CELL",     "PROD_CD",     "MODEL_CL_NM",   "PRD_MST_SPL_NM", "MODEL_NM", "PRD_OPT_IDX", "ORD_MST_VDR_BNF_ID",  "KSTBIT",     "ORD_MST_REG_DT",  "RDP_MST_IDX", "UTM_SOURCE",  "UTM_MEDIUM",  "UTM_CAMPAIGN",  "UTM_TERM",  "UTM_CONTENT"};
+            String [] cellType =    {"Number",  "String",      "String",        "String", "String",   "String",      "String",        "String",         "String",   "String",      "String",              "String",  "String" ,         "String",      "String",      "String",      "String",        "String",    "String"};
+            String [] colSize =     {"50",      "50",          "50",            "50",     "50",       "50",          "150",            "80",            "80",       "80",          "50",                  "20",      "50",              "50",          "100",         "100",         "100",           "100",       "100"};
+            excel.put("headerTitle", headerTitle);
+            excel.put("cellField", cellField);
+            excel.put("cellType", cellType);
+            excel.put("colSize", colSize);
+        }
+        return excel;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderJoinList
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 가입 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/order/orderJoinList")
+    public ModelAndView orderJoinList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 상품 유형 코드 조회
+        mv.addObject("codeList", commonService.selectCode("PRODUCT_TYPE_CODE"));
+        // 회원 코드 조회
+        mv.addObject("memerJoinList", commonService.selectCode("MEMBER_JOIN"));        
+        int totalCount = orderService.selectJoinOrderCount(commandMap);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            mv.addObject("list", orderService.selectJoinOrderList(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/order/orderJoinList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderJoinExcelDownload
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 엑셀다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */    
+    @RequestMapping(value="/bo/order/orderJoinExcelDownload")
+    public EXCEL orderJoinExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.orderService.selectJoinOrderList(commandMap);
+
+        if (list != null) {
+            excel.put("fileName", "daemyung_join_order_" + DateUtil.getCurrentDateTime());
+            for(Map<String, Object> row : list) {
+                String  RDP_MST_IDX = StringUtil.getString(row, "RDP_MST_IDX", "");
+                if (RDP_MST_IDX.equals("")) {
+                    RDP_MST_IDX = "";
+                } else {
+                    RDP_MST_IDX = StringUtil.getString(row, "RDP_MST_IDX", "");
+                }
+            }
+            excel.put("list", list);
+            String [] headerTitle = {"NO",     "회원번호",   "주문번호",       "온라인상품명",   "고객명",    "연락처",   "기간계 상품코드",  "모델분류",      "지원혜택",         "모델명",      "옵션",          "추가정보",               "회원상태",     "접수일",   "가입일",     "레디플래너 번호",   "UTM_SOURCE",  "UTM_MEDIUM", "UTM_CAMPAIGN",  "UTM_TERM",  "UTM_CONTENT",  "잔여회차",      "납입회차"};
+            String [] cellField =   {"RNUM",   "ACCNT_NO", "ORD_MST_IDX",  "PRD_MST_NM", "MEM_NM",  "CELL",    "PROD_CD",     "MODEL_CL_NM", "PRD_MST_SPL_NM", "MODEL_NM",  "PRD_OPT_IDX",  "ORD_MST_VDR_BNF_ID",  "KSTBIT",     "REG_DM",  "JOIN_DT",  "RDP_MST_IDX",  "UTM_SOURCE",   "UTM_MEDIUM", "UTM_CAMPAIGN", "UTM_TERM",  "UTM_CONTENT",   "REST_NO",    "PAY_NO"};
+            String [] cellType =    {"Number", "String",   "String",       "String",     "String",  "String",  "String",      "String",      "String",         "String",    "String",       "String",              "String",     "String",  "String",   "String",       "String",       "String",     "String",       "String",    "String",        "String",     "String"};
+            String [] colSize =     {"50",     "150",      "150",          "150",        "150",     "150",     "150",         "150",         "150",            "150",       "150",          "150",                 "150",        "150",     "150",      "50",           "150",          "150",        "150",          "150",       "150",           "150",        "150"};
+            excel.put("headerTitle", headerTitle);
+            excel.put("cellField", cellField);
+            excel.put("cellType", cellType);
+            excel.put("colSize", colSize);
+        }
+        return excel;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderReceiptDetailPopup
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 가입 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/order/orderReceiptDetailPopup")
+    public ModelAndView orderReceiptDetailPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if (!"".equals(StringUtil.getString(commandMap.get("ORD_MST_IDX"), ""))) {
+            mv.addAllObjects(this.orderService.selectOrderReceiptInfo(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/order/orderDetailPopup");
+        return mv;
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderJoinDetailPopup
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 가입 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/order/orderJoinDetailPopup")
+    public ModelAndView orderJoinDetailPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if (!"".equals(StringUtil.getString(commandMap.get("ORD_MST_IDX"), ""))) {
+            mv.addAllObjects(this.orderService.selectOrderJoinInfo(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/order/orderDetailPopup");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : orderPaymentDetailPopup
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 납입상세 리스트
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 25.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/order/orderPaymentDetailPopup")
+    public ModelAndView orderPaymentDetailPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if (!"".equals(StringUtil.getString(commandMap.get("ORD_MST_IDX"), ""))) {
+            mv.addAllObjects(orderService.selectOrderPaymentList(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/order/orderPaymentDetailPopup");
+        return mv;
+    }
+    /**
+     * <pre>
+     * 1. MethodName : refund
+     * 2. ClassName  : OrderController.java
+     * 3. Comment    : 관리자 > 가입결제 조회 > 접수 /가입 > PG 환불 요청
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 4.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value={"/bo/order/orderReceiptRefundAjax.do", "/bo/order/orderJoinRefundAjax.do"}, method=RequestMethod.POST)
+    public JSON refund (@RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        Map<String, Object> resultMap = new HashMap<>();
+        try {
+            /*************************************************************
+             * 필수 파라메터
+             *************************************************************
+             * col                  type        description
+             ************************************************************
+             * ORD_MST_IDX          int         주문관리IDX
+             * MSG                  String      취소 사유
+             ************************************************************/
+            resultMap = iniPayService.insertIniPayCnlReq(commandMap);
+            /************************************************************
+             * 취소 결과 (isSuccess 로 성공 실패 여부를 판단 하세요.)
+             ************************************************************
+             * col                  type        description
+             ************************************************************
+             * isSuccess            boolean     성공여부 (true, false)
+             * resultCode           String      결과코드(성공:00 그 외는 실패)
+             * resultMsg            String      결과 메세지
+             ************************************************************/
+            json.put("isSuccess", (boolean) resultMap.get("isSuccess"));
+            json.put("resultCode", StringUtil.getString(resultMap, "resultCode"));
+            json.put("resultMsg", StringUtil.getString(resultMap, "resultMsg"));
+        } catch (RuntimeException e) {
+            if (log.isDebugEnabled()) {
+                e.printStackTrace();
+            } else {
+                log.error(Arrays.toString(e.getStackTrace()));
+            }
+            json.put("isSuccess", false);
+            json.put("resultCode", Const.ERROR.E500.getCode());
+            json.put("resultMsg", Const.ERROR.E500.getMessage());
+        }
+        return json;
+    }
+}

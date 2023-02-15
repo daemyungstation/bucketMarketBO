@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="103" height="103" viewBox="0 0 103 103">
+  <g id="ic_전시관리" transform="translate(-552 -434)">
+    <rect id="사각형_1794" data-name="사각형 1794" width="103" height="103" transform="translate(552 434)" fill="none"/>
+    <g id="그룹_137" data-name="그룹 137" transform="translate(-45.891 1505.657)">
+      <line id="선_116" data-name="선 116" x2="47.633" transform="translate(609.94 -1052.166)" fill="#fff" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <line id="선_117" data-name="선 117" x2="47.633" transform="translate(609.94 -1036.289)" fill="#fff" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <line id="선_118" data-name="선 118" x2="47.633" transform="translate(609.94 -1020.411)" fill="#fff" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <line id="선_119" data-name="선 119" x2="21.17" transform="translate(636.402 -986.01)" fill="#fff" stroke="#fff" stroke-linecap="round" stroke-linejoin="bevel" stroke-width="3"/>
+      <path id="패스_1172" data-name="패스 1172" d="M644.809-995.351l9.053-11.005,11.759-6.453v-50.848h-63.73v86.491h63.73v-23.569l-6.667,3.659Z" fill="none" stroke="#fff" stroke-linejoin="round" stroke-width="3"/>
+      <path id="패스_1173" data-name="패스 1173" d="M665.621-1000.735l32.771-17.984L693.3-1028l-27.679,15.189" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,909 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Support">
+
+    <!-- 지원혜택 조회조건  -->
+    <sql id="rentalWhere">
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchPrdMstMdTypeAndSplNm != null and searchPrdMstMdTypeAndSplNm != ''">
+            AND VPM.MODEL_CL_NM || TPM.PRD_MST_SPL_NM LIKE '%' || #{searchPrdMstMdTypeAndSplNm} || '%'
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchVdrApv != null and searchVdrApv != ''">
+            AND ORD_MST_VDR_APV = #{searchVdrApv}
+        </if>
+        <if test="searchMemNm != null and searchMemNm != ''">
+            AND MEM_NM = #{searchMemNm}
+        </if>
+        <if test="searchCell != null and searchCell != ''">
+            AND SUBSTR(CELL,-4) = #{searchCell}
+        </if>
+        <if test="searchVdrMstIdx != null and searchVdrMstIdx != ''">
+            AND TPM.VDR_MST_IDX = #{searchVdrMstIdx}
+        </if>            
+    </sql>
+    
+    <!-- 관리자 > 발주/혜택관리 > 렌탈접수 조회 개수 -->
+    <select id="selectRentalSupportCount" parameterType="HashMap" resultType="Integer">
+        /* Support.selectRentalOrderCount */
+        SELECT COUNT(OM.ORD_MST_IDX)
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM
+        WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND NOT EXISTS (SELECT OM.ORD_MST_IDX FROM V_ORD_MST VM WHERE OM.ORD_MST_IDX = VM.ORD_MST_IDX)
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_RENTAL}'
+        <include refid="rentalWhere"/>
+    </select>
+   
+    <!-- 관리자 > 발주/혜택관리 > 렌탈접수 조회 목록 -->
+    <select id="selectRentalSupportList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectRentalOrderList */
+        SELECT
+            RNUM
+            ,ORD_MST_IDX
+            ,PRD_MST_NO
+            ,PRD_MST_NM
+            ,MEM_NM
+            ,CELL
+            ,VDR_MST_IDX
+            ,VDR_MST_NM
+            ,MODEL_CL_NM
+            ,PRD_MST_SPL_NM
+            ,MODEL_NM
+            ,PRD_OPT_IDX
+            ,PRD_OPT_IDX_NM
+            ,PRD_OPT_DTL_LIST
+            ,MODEL_NM
+            ,PRD_MST_MD
+            ,ORD_MST_VDR_APV
+            ,ORD_MST_VDR_APV_NM
+            ,INSPL_ADDR
+            ,INSPL_ADDR2
+            ,ORD_MST_REG_DT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    OM.ORD_MST_IDX
+                    ,CPM.PRD_MST_NO
+                    ,PRD_MST_NM
+                    ,MEM_NM
+                    ,REGEXP_REPLACE(CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+                    ,TPM.VDR_MST_IDX
+                    ,(SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = TPM.VDR_MST_IDX) AS VDR_MST_NM
+                    ,MODEL_CL_NM
+                    ,PRD_MST_SPL_NM
+                    ,PRD_OPT_IDX
+                    ,(SELECT PRD_OPT_DTL FROM T_PRD_OPT PO WHERE  PO.PRD_OPT_IDX = OM.PRD_OPT_IDX ) AS PRD_OPT_IDX_NM
+                    ,(SELECT TO_CHAR(WM_CONCAT(PRD_OPT_IDX||'|'||PRD_OPT_DTL)) FROM T_PRD_OPT PO WHERE PO.PRD_MST_CD = TPM.PRD_MST_CD) AS PRD_OPT_DTL_LIST
+                    ,MODEL_NM
+                    ,PRD_MST_MD
+                    ,ORD_MST_VDR_APV
+                    ,(SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = ORD_MST_VDR_APV ) AS ORD_MST_VDR_APV_NM
+                    ,INSPL_ADDR
+                    ,INSPL_ADDR2
+                    ,ORD_MST_REG_DT
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM
+                WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND NOT EXISTS (SELECT OM.ORD_MST_IDX FROM V_ORD_MST VM WHERE OM.ORD_MST_IDX = VM.ORD_MST_IDX)
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_RENTAL}'
+                <include refid="rentalWhere"/>
+                ORDER BY ORD_MST_REG_DT DESC
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+    <update id="updateRentalOption" parameterType="HashMap">
+    /* Support.updateRentalOption */
+        UPDATE T_ORD_MST SET
+            PRD_OPT_IDX = #{PRD_OPT_IDX},
+            ORD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            ORD_MST_UPD_IP = #{ORD_MST_UPD_IP},
+            ORD_MST_UPD_ID = #{ORD_MST_UPD_ID}
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>    
+    
+    <!-- 관리자 > 발주/혜택관리 > 렌탈상품 제휴사 승인 -->
+    <update id="updateVenderApproval" parameterType="HashMap">
+    /* Support.updateVenderApproval */
+        UPDATE T_ORD_MST SET
+            ORD_MST_VDR_APV = #{ORD_MST_VDR_APV},
+            ORD_MST_APV_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            ORD_MST_APV_IP = #{ORD_MST_APV_IP},
+            ORD_MST_APV_ID = #{ORD_MST_APV_ID}
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>
+    
+    <!-- 관리자 > 발주/혜택관리 > 기본정보 변경여부 체크 -->
+    <update id="updateBasicInfo" parameterType="HashMap">
+    /* Support.updateBasicInfo */
+        UPDATE T_ORD_DLCC SET
+            UPD_YN = 'Y'
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>    
+    
+    <select id="selectRentalDetailInfo" parameterType="HashMap" resultType="HashMap">
+    /* Support.selectRentalDetailInfo */
+        SELECT 
+            OM.ORD_MST_IDX
+            ,CPM.PRD_MST_NO
+            ,PRD_MST_NM
+            ,MEM_NM
+            ,REGEXP_REPLACE(CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+            ,MODEL_CL_NM
+            ,PRD_MST_SPL_NM
+            ,MODEL_NM
+            ,ORD_MST_VDR_APV
+            ,(SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = ORD_MST_VDR_APV ) AS ORD_MST_VDR_APV_NM
+            ,HOME_ADDR
+            ,HOME_ADDR2
+            ,INSPL_MEM_NM
+            ,REGEXP_REPLACE(INSPL_CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS INSPL_CELL
+            ,REGEXP_REPLACE(INSPL_CELL, '(02|.{3})(.+)(.{4})', '\1') AS INSPL_CELL1
+            ,REGEXP_REPLACE(INSPL_CELL, '(02|.{3})(.+)(.{4})', '\2') AS INSPL_CELL2
+            ,REGEXP_REPLACE(INSPL_CELL, '(02|.{3})(.+)(.{4})', '\3') AS INSPL_CELL3            
+            ,INSPL_ZIP
+            ,INSPL_ADDR
+            ,INSPL_ADDR2
+            ,ORD_MST_REG_DT
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM
+        WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND NOT EXISTS (SELECT OM.ORD_MST_IDX FROM V_ORD_MST VM WHERE OM.ORD_MST_IDX = VM.ORD_MST_IDX)
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD    
+        AND OM.ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 설치주소 변경 -->
+    <update id="updateInstallInfo" parameterType="HashMap">
+        UPDATE T_ORD_DLCC SET
+            INSPL_MEM_NM = #{INSPL_MEM_NM}
+            ,INSPL_CELL = #{INSPL_CELL}
+            ,INSPL_ZIP = #{INSPL_ZIP}
+            ,INSPL_ADDR = #{INSPL_ADDR}
+            ,INSPL_ADDR2 = #{INSPL_ADDR2}
+            ,UPD_YN = 'Y'
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>
+    
+    
+    <!-- 지원혜택 상품배송 조회조건  -->
+    <sql id="deliveryWhere">
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            <if test="searchDateType.equals(@common.code.Code@MEMBER_JOIN_COMPLETE.toString())">
+                    AND VOM.JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="!searchDateType.equals(@common.code.Code@MEMBER_JOIN_COMPLETE.toString())">
+                    AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>            
+        </if>
+        <if test="searchPrdMstMdTypeAndSplNm != null and searchPrdMstMdTypeAndSplNm != ''">
+            AND VPM.MODEL_CL_NM || TPM.PRD_MST_SPL_NM LIKE '%' || #{searchPrdMstMdTypeAndSplNm} || '%'
+        </if>
+        <if test="searchAccntNo != null and searchAccntNo != ''">
+            AND VOM.ACCNT_NO = #{searchAccntNo}
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchMemNm != null and searchMemNm != ''">
+            AND VOM.MEM_NM = #{searchMemNm}
+        </if>
+        <if test="searchCell != null and searchCell != ''">
+            AND SUBSTR(VOM.CELL,-4) = #{searchCell}
+        </if>
+        <if test="searchDlvState != null and searchDlvState != ''">
+            AND OM.ORD_MST_DLV_STATE = #{searchDlvState}
+        </if>       
+        <if test="searchVdrMstIdx != null and searchVdrMstIdx != ''">
+            AND TPM.VDR_MST_IDX = #{searchVdrMstIdx}
+        </if>
+        <if test="searchCancelYn != null and searchCancelYn != ''">
+            AND VOM.KSTBIT = (SELECT CMN_COM_ETC1 FROM T_CMM_COM WHERE CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_CANCEL}')
+        </if>
+        <if test="searchUpdateYn != null and searchUpdateYn != ''">
+            AND OD.UPD_YN = #{searchUpdateYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 개수 -->
+    <select id="selectSupportDeliveryCount" parameterType="HashMap" resultType="Integer">
+        /* Support.selectSupportDeliveryCount */
+        SELECT COUNT(ORD_MST_IDX)
+        FROM (
+                SELECT 
+                    OM.ORD_MST_IDX
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'Y'
+                AND CPM.PRD_MST_TYPE <![CDATA[<>]]> '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                <include refid="deliveryWhere"/>
+                UNION
+                SELECT 
+                    OM.ORD_MST_IDX
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'Y'
+                AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND VPM.EXPR_NO = (SELECT MAX(PAY_NO) FROM V_ORD_DPS OD WHERE OD.ORD_MST_IDX =OM.ORD_MST_IDX)
+                <include refid="deliveryWhere"/>
+        )
+    </select>    
+   
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 목록 -->
+    <select id="selectSupportDeliveryList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectSupportDeliveryList */
+        SELECT
+            RNUM
+            ,ORD_MST_IDX
+            ,ACCNT_NO
+            ,JOIN_DT
+            ,MEM_NM
+            ,VDR_MST_IDX
+            ,(SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = S2.VDR_MST_IDX) AS VDR_MST_NM
+            ,KSTBIT
+            ,REGEXP_REPLACE(CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+            ,MODEL_CL_NM
+            ,PRD_MST_SPL_NM
+            ,PRD_OPT_IDX
+            ,(SELECT TO_CHAR(WM_CONCAT(PRD_OPT_IDX||'|'||PRD_OPT_DTL)) FROM T_PRD_OPT PO WHERE PO.PRD_MST_CD = S2.PRD_MST_CD) AS PRD_OPT_DTL_LIST
+            ,(SELECT PRD_OPT_DTL FROM T_PRD_OPT PO WHERE  PO.PRD_OPT_IDX = S2.PRD_OPT_IDX ) AS PRD_OPT_IDX_NM                         
+            ,MODEL_NM
+            ,INSPL_ADDR
+            ,INSPL_ADDR2
+            ,UPD_YN
+            ,ORD_MST_DLV_STATE
+            ,(SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = ORD_MST_DLV_STATE) ORD_MST_DLV_STATE_NM
+            ,ORD_MST_DLV_ING_DT
+            ,ORD_MST_DLV_CPL_DT
+            ,ORD_MST_DLV_WAT_DT
+            ,SUBSTR((SELECT MAX(ORD_MEMO_CTS) KEEP(DENSE_RANK FIRST ORDER BY ORD_MEMO_IDX DESC) FROM T_ORD_MEMO TOM WHERE TOM.ORD_MST_IDX = S2.ORD_MST_IDX ),0,20) AS ORD_MEMO_CTS
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    VOM.ORD_MST_IDX
+                    ,VOM.ACCNT_NO
+                    ,VOM.JOIN_DT
+                    ,VOM.MEM_NM
+                    ,TPM.VDR_MST_IDX
+                    ,VOM.KSTBIT
+                    ,VOM.CELL
+                    ,VPM.MODEL_CL_NM
+                    ,TPM.PRD_MST_SPL_NM
+                    ,OM.PRD_OPT_IDX
+                    ,TPM.PRD_MST_CD
+                    ,VOM.MODEL_NM
+                    ,OD.INSPL_ADDR
+                    ,OD.INSPL_ADDR2
+                    ,OD.UPD_YN
+                    ,OM.ORD_MST_DLV_STATE
+                    ,OM.ORD_MST_DLV_ING_DT
+                    ,OM.ORD_MST_DLV_CPL_DT
+                    ,OM.ORD_MST_DLV_WAT_DT
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'Y'
+                AND CPM.PRD_MST_TYPE <![CDATA[<>]]> '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                <include refid="deliveryWhere"/>
+                UNION
+                SELECT 
+                    VOM.ORD_MST_IDX
+                    ,VOM.ACCNT_NO
+                    ,VOM.JOIN_DT
+                    ,VOM.MEM_NM
+                    ,TPM.VDR_MST_IDX
+                    ,VOM.KSTBIT
+                    ,VOM.CELL
+                    ,VPM.MODEL_CL_NM
+                    ,TPM.PRD_MST_SPL_NM
+                    ,OM.PRD_OPT_IDX
+                    ,TPM.PRD_MST_CD
+                    ,VOM.MODEL_NM
+                    ,OD.INSPL_ADDR
+                    ,OD.INSPL_ADDR2
+                    ,OD.UPD_YN
+                    ,OM.ORD_MST_DLV_STATE
+                    ,OM.ORD_MST_DLV_ING_DT
+                    ,OM.ORD_MST_DLV_CPL_DT
+                    ,OM.ORD_MST_DLV_WAT_DT
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'Y'
+                AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND VPM.EXPR_NO = (SELECT MAX(PAY_NO) FROM V_ORD_DPS OD WHERE OD.ORD_MST_IDX =OM.ORD_MST_IDX)
+                <include refid="deliveryWhere"/>
+                ORDER BY JOIN_DT DESC
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 배송상태 변경 -->
+    <update id="updateDeliveryState" parameterType="HashMap">
+        UPDATE T_ORD_MST SET 
+            ORD_MST_DLV_STATE = DECODE(ORD_MST_DLV_CPL_DT, NULL, DECODE(ORD_MST_DLV_WAT_DT, NULL,(DECODE(ORD_MST_DLV_ING_DT,NULL,'${@common.code.Code@DELIVERY_READY}','${@common.code.Code@DELIVERY_ING}')),'${@common.code.Code@DELIVERY_HOLD}'),'${@common.code.Code@DELIVERY_COMPLETE}')
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>
+    
+    <!-- 관리자 > 발주/혜택관리 > 배송관련 일자 변경 -->
+    <update id="updateDeliveryDate" parameterType="HashMap">
+        UPDATE T_ORD_MST SET
+            ORD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            ,ORD_MST_UPD_IP = #{ORD_MST_UPD_IP}
+            ,ORD_MST_UPD_ID = #{ORD_MST_UPD_ID}
+            <if test="ORD_MST_DLV_ING_DT != null and ORD_MST_DLV_ING_DT != ''">
+                ,ORD_MST_DLV_ING_DT = REPLACE(#{ORD_MST_DLV_ING_DT},'-', '')
+            </if>
+            <if test="ORD_MST_DLV_CPL_DT != null and ORD_MST_DLV_CPL_DT != ''">
+                ,ORD_MST_DLV_CPL_DT = REPLACE(#{ORD_MST_DLV_CPL_DT},'-', '')
+            </if>
+            <if test="ORD_MST_DLV_WAT_DT != null and ORD_MST_DLV_WAT_DT != ''">
+                ,ORD_MST_DLV_WAT_DT = REPLACE(#{ORD_MST_DLV_WAT_DT},'-', '')
+            </if>
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>
+
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 > 배송상태 조회 -->
+    <select id="selectDeliveryStateStr" parameterType="HashMap" resultType="String">
+        /* Support.selectDeliveryStateStr */
+        SELECT CMN_COM_NM
+        FROM T_CMM_COM
+        WHERE CMN_COM_IDX = (SELECT ORD_MST_DLV_STATE FROM T_ORD_MST WHERE ORD_MST_IDX = #{ORD_MST_IDX})
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 > 상세 조회 -->
+    <select id="selectDeliveryDetailInfo" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectDeliveryDetailInfo */
+        SELECT 
+            VOM.ORD_MST_IDX
+            ,VOM.ACCNT_NO
+            ,OM.ORD_MST_ORD_DT
+            ,VOM.MEM_NM
+            ,REGEXP_REPLACE(VOM.CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+            ,VOM.HOME_ADDR
+            ,VOM.HOME_ADDR2
+            ,VPM.MODEL_CL_NM
+            ,TPM.PRD_MST_SPL_NM
+            ,VOM.MODEL_NM
+            ,VOM.JOIN_DT
+            ,OD.INSPL_MEM_NM
+            ,OD.INSPL_ZIP
+            ,OD.INSPL_ADDR
+            ,OD.INSPL_ADDR2
+            ,REGEXP_REPLACE(OD.INSPL_CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS INSPL_CELL
+            ,REGEXP_REPLACE(OD.INSPL_CELL, '(02|.{3})(.+)(.{4})', '\1') AS INSPL_CELL1
+            ,REGEXP_REPLACE(OD.INSPL_CELL, '(02|.{3})(.+)(.{4})', '\2') AS INSPL_CELL2
+            ,REGEXP_REPLACE(OD.INSPL_CELL, '(02|.{3})(.+)(.{4})', '\3') AS INSPL_CELL3  
+            ,TPM.VDR_MST_IDX
+            ,(SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = TPM.VDR_MST_IDX) AS VDR_MST_NM
+            ,OM.PRD_OPT_IDX
+            ,(SELECT TO_CHAR(WM_CONCAT(PRD_OPT_IDX||'|'||PRD_OPT_DTL)) FROM T_PRD_OPT PO WHERE PO.PRD_MST_CD = TPM.PRD_MST_CD) AS PRD_OPT_DTL_LIST
+            ,(SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = OM.ORD_MST_DLV_STATE) ORD_MST_DLV_STATE_NM
+            ,OM.ORD_MST_DLV_ING_DT
+            ,OM.ORD_MST_DLV_CPL_DT
+            ,OM.ORD_MST_DLV_WAT_DT
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND CPM.PRD_MST_BND_YN = 'Y'
+        AND OM.ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 렌탈접수 조회 개수 -->
+    <select id="selectSupportMemoCount" parameterType="HashMap" resultType="Integer">
+        /* Support.selectSupportMemoCount */
+        SELECT COUNT(ORD_MEMO_IDX)
+        FROM T_ORD_MEMO
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>    
+   
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 목록 -->
+    <select id="selectSupportMemoList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectSupportMemoList */
+        SELECT
+            RNUM
+            ,ORD_MEMO_CTS
+            ,ORD_MEMO_REG_DT
+            ,ORD_MEMO_REG_ID
+            ,(SELECT ADM_MST_NM FROM T_ADM_MST ADM WHERE S2.ORD_MEMO_REG_ID = ADM.ADM_MST_ID ) AS ADM_MST_NM
+            ,(SELECT AUT_MST_NM FROM T_AUT_MST AUT, T_ADM_MST ADM WHERE AUT.AUT_MST_IDX = ADM.AUT_MST_IDX AND S2.ORD_MEMO_REG_ID = ADM.ADM_MST_ID ) AS AUT_MST_NM
+            ,(SELECT VDR_MST_NM FROM T_VDR_MST VM, T_ADM_MST ADM WHERE VM.VDR_MST_IDX = ADM.ADM_MST_SUB_IDX AND S2.ORD_MEMO_REG_ID = ADM.ADM_MST_ID ) AS VDR_MST_NM
+            ,(SELECT AUT_MST_VDR_YN FROM T_AUT_MST AUT, T_ADM_MST ADM WHERE AUT.AUT_MST_IDX = ADM.AUT_MST_IDX AND S2.ORD_MEMO_REG_ID = ADM.ADM_MST_ID ) AS AUT_MST_VDR_YN
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    ORD_MEMO_CTS
+                    ,ORD_MEMO_REG_DT
+                    ,ORD_MEMO_REG_ID
+                FROM T_ORD_MEMO
+                WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+                ORDER BY ORD_MEMO_IDX DESC
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>        
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 상품발주 조회 상세 > 특이사항등록--> 
+    <insert id="insertOrderMemoInfo" parameterType="HashMap">
+        <selectKey keyProperty="ORD_MEMO_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_ORD_MEMO_IDX.NEXTVAL AS ORD_MEMO_IDX FROM DUAL
+        </selectKey> 
+        /* Support.insertOrderMemoInfo */
+        INSERT INTO T_ORD_MEMO (
+            ORD_MEMO_IDX,
+            ORD_MST_IDX,
+            ORD_MEMO_CTS,
+            ORD_MEMO_REG_DT,
+            ORD_MEMO_REG_ID,
+            ORD_MEMO_REG_IP
+        ) VALUES (
+            #{ORD_MEMO_IDX},
+            #{ORD_MST_IDX},
+            #{ORD_MEMO_CTS},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{ORD_MEMO_REG_ID},
+            #{ORD_MEMO_REG_IP}
+        )
+    </insert>
+    
+    <!-- 혜택지원 조회조건  -->
+    <sql id="benefityWhere">
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND VOD.PAY_DAY BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchVdrMstIdx != null and searchVdrMstIdx != ''">
+            AND TPM.VDR_MST_IDX = #{searchVdrMstIdx}
+        </if>        
+        <if test="searchPrdMstMdTypeAndSplNm != null and searchPrdMstMdTypeAndSplNm != ''">
+            AND VPM.MODEL_CL_NM || TPM.PRD_MST_SPL_NM LIKE '%' || #{searchPrdMstMdTypeAndSplNm} || '%'
+        </if>
+        <if test="searchAccntNo != null and searchAccntNo != ''">
+            AND VOM.ACCNT_NO = #{searchAccntNo}
+        </if>
+        <if test="searchCell != null and searchCell != ''">
+            AND SUBSTR(CELL,-4) = #{searchCell}
+        </if>        
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchProdCd != null and searchProdCd != ''">
+            AND CPM.PROD_CD = #{searchProdCd}
+        </if>        
+        <if test="searchMemNm != null and searchMemNm != ''">
+            AND VOM.MEM_NM = #{searchMemNm}
+        </if>
+        <if test="searchBnfYn != null and searchBnfYn != ''">
+            AND VOD.ORD_BNF_YN = #{searchBnfYn}
+        </if>        
+    </sql>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) 조회 개수 -->
+    <select id="selectSupportBenefitCount" parameterType="HashMap" resultType="Integer">
+        /* Support.selectSupportBenefitCount */
+        SELECT COUNT(ORD_MST_IDX)
+        FROM (
+                SELECT 
+                    VOM.ORD_MST_IDX||VOD.PAY_DAY||VOD.PAY_NO AS ORD_MST_IDX
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE <![CDATA[<>]]> '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VOD.PAY_NO <![CDATA[<= ]]> VPM.REL_CNT
+                <include refid="benefityWhere"/>
+                UNION
+                SELECT 
+                    VOD.ORD_MST_IDX||VOD.PAY_NO AS ORD_MST_IDX
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VPM.EXPR_NO = VOD.PAY_NO
+                <include refid="benefityWhere"/>
+        )
+    </select>       
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) 조회 목록 -->
+    <select id="selectSupportBenefitList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectSupportBenefitList */
+        SELECT
+            RNUM
+            ,ORD_MST_IDX
+            ,ACCNT_NO
+            ,MEM_NM
+            ,PRD_MST_NO
+            ,PRD_MST_NM
+            ,REGEXP_REPLACE(CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+            ,PAY_NO
+            ,PAY_DAY
+            ,VDR_MST_IDX
+            ,(SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = S2.VDR_MST_IDX) AS VDR_MST_NM
+            ,MODEL_CL_NM
+            ,PRD_MST_SPL_NM
+            ,KSTBIT
+            ,(SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_UP_IDX = '${@common.code.Code@MEMBER_JOIN}' AND CC.CMN_COM_ETC1 = KSTBIT) AS KSTBIT_NM
+            ,UPD_YN
+            ,ORD_MST_VDR_BNF_ID
+            ,PRD_MST_SPT_TXT
+            ,ORD_BNF_DT
+            ,ORD_BNF_YN
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT 
+                    VOM.ORD_MST_IDX
+                    ,VOM.ACCNT_NO
+                    ,VOM.MEM_NM
+                    ,CPM.PRD_MST_NM
+                    ,VOM.CELL
+                    ,VOD.PAY_NO
+                    ,VOD.PAY_DAY
+                    ,TPM.VDR_MST_IDX
+                    ,VPM.MODEL_CL_NM
+                    ,TPM.PRD_MST_SPL_NM
+                    ,VOM.KSTBIT
+                    ,TPM.PRD_MST_CD
+                    ,CPM.PRD_MST_NO
+                    ,OD.UPD_YN
+                    ,DECODE(VOD.ORD_MST_VDR_BNF_ID,NULL,OD.ORD_MST_VDR_BNF_ID, VOD.ORD_MST_VDR_BNF_ID) AS ORD_MST_VDR_BNF_ID
+                    ,DECODE(VOD.PRD_MST_SPT_TXT,NULL,CPM.PRD_MST_SPT_TXT, VOD.PRD_MST_SPT_TXT) AS PRD_MST_SPT_TXT
+                    ,VOD.ORD_BNF_DT
+                    ,NVL(VOD.ORD_BNF_YN,'N') AS ORD_BNF_YN
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE <![CDATA[<>]]> '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VOD.PAY_NO <![CDATA[<= ]]> VPM.REL_CNT
+                <include refid="benefityWhere"/>
+                UNION
+                SELECT 
+                    VOM.ORD_MST_IDX
+                    ,VOM.ACCNT_NO
+                    ,VOM.MEM_NM
+                    ,CPM.PRD_MST_NM
+                    ,VOM.CELL
+                    ,VOD.PAY_NO
+                    ,VOD.PAY_DAY
+                    ,TPM.VDR_MST_IDX
+                    ,VPM.MODEL_CL_NM
+                    ,TPM.PRD_MST_SPL_NM
+                    ,VOM.KSTBIT
+                    ,TPM.PRD_MST_CD
+                    ,CPM.PRD_MST_NO
+                    ,OD.UPD_YN
+                    ,DECODE(VOD.ORD_MST_VDR_BNF_ID,NULL,OD.ORD_MST_VDR_BNF_ID, VOD.ORD_MST_VDR_BNF_ID) AS ORD_MST_VDR_BNF_ID
+                    ,DECODE(VOD.PRD_MST_SPT_TXT,NULL,CPM.PRD_MST_SPT_TXT, VOD.PRD_MST_SPT_TXT) AS PRD_MST_SPT_TXT
+                    ,VOD.ORD_BNF_DT
+                    ,NVL(VOD.ORD_BNF_YN,'N') AS ORD_BNF_YN
+                FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+                WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+                AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+                AND CPM.PROD_CD = VPM.PROD_CD
+                AND CPM.PROD_KIND = VPM.PROD_KIND
+                AND CPM.MODEL_CD = VPM.MODEL_CD
+                AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+                AND CPM.PRD_MST_BND_YN = 'N'
+                AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+                AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+                AND VPM.EXPR_NO = VOD.PAY_NO
+                <include refid="benefityWhere"/>
+                ORDER BY ACCNT_NO, PAY_DAY, PAY_NO DESC
+            ) S1
+            <if test="endNum != null and endNum != ''">
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) > 일괄 지급 조회 -->
+    <select id="selectBenefitBatchTargetList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectBenefitBatchTargetList */
+        SELECT 
+            VOM.ORD_MST_IDX
+            ,VOM.ACCNT_NO
+            ,VOM.MEM_NM
+            ,CPM.PRD_MST_NM
+            ,REGEXP_REPLACE(VOM.CELL, '(02|.{3})(.+)(.{4})', '\1-\2-\3') AS CELL
+            ,VOD.PAY_NO
+            ,VOD.PAY_DAY
+            ,CPM.PROD_CD
+            ,TPM.VDR_MST_IDX
+            ,(SELECT VDR_MST_NM FROM T_VDR_MST VM WHERE VM.VDR_MST_IDX = TPM.VDR_MST_IDX) AS VDR_MST_NM
+            ,VPM.MODEL_CL_NM
+            ,TPM.PRD_MST_SPL_NM
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND CPM.PRD_MST_BND_YN = 'N'
+        AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+        AND VOD.ACCNT_NO = #{ACCNT_NO}
+            <if test="PAY_NO != null and PAY_NO.length > 0">
+                AND VOD.PAY_NO IN 
+                <foreach collection="PAY_NO" item="PAY_NO_ITEM" open="(" close=")" separator=",">
+                    #{PAY_NO_ITEM}
+                </foreach>
+            </if>        
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) > 일괄 지급 조회 -->
+    <select id="selectBenefitBatchTargetInfo" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectBenefitBatchTargetInfo */
+        SELECT 
+            VOM.ORD_MST_IDX
+            ,VOM.ACCNT_NO
+            ,VOM.MEM_NM
+            ,CPM.PRD_MST_SPT_TXT
+            ,OD.ORD_MST_VDR_BNF_ID
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND CPM.PRD_MST_BND_YN = 'N'
+        AND VOM.ACCNT_NO = #{ACCNT_NO}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) > 일괄 지급 -->
+    <update id="updateBenefitBatchInfo" parameterType="HashMap">
+        /* Support.updateBenefitBatchInfo */
+        UPDATE V_ORD_DPS SET 
+            ORD_MST_VDR_BNF_ID = #{ORD_MST_VDR_BNF_ID}
+            ,ORD_BNF_DT = REPLACE(#{ORD_BNF_DT},'-', '')
+            ,PRD_MST_SPT_TXT = #{PRD_MST_SPT_TXT}
+            ,ORD_BNF_YN = 'Y'
+            ,ORD_BNF_REG_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            ,ORD_BNF_REG_ID = #{ORD_BNF_REG_ID}
+            ,ORD_BNF_REG_IP = #{ORD_BNF_REG_IP} 
+        WHERE ACCNT_NO = #{ACCNT_NO} 
+        AND PAY_NO = #{PAY_NO}
+<!--         <foreach collection="PAY_NO" item="PAY_NO_ITEM" open="(" close=")" separator=","> -->
+<!--             #{PAY_NO_ITEM} -->
+<!--         </foreach> -->
+    </update>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택지원(포인트) > 일괄 지급 -->
+    <update id="updateOrderBenefitIDInfo" parameterType="HashMap">
+    /* Support.updateOrderBenefitIDInfo */
+        UPDATE T_ORD_DLCC SET
+            ORD_MST_VDR_BNF_ID = #{ORD_MST_VDR_BNF_ID}
+            ,ORD_DLCC_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')
+            ,ORD_DLCC_UPD_ID = #{ORD_DLCC_UPD_ID}
+            ,ORD_DLCC_UPD_IP = #{ORD_DLCC_UPD_IP} 
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </update>    
+    
+    <!-- 관리자 > 발주/혜택관리 > DLCC 전송 정보 조회 -->
+    <select id="selectRentalSupportInfo" parameterType="HashMap" resultType="HashMap">
+    /* Support.selectRentalSupportInfo */
+        SELECT 
+            CI_VAL,
+            MEM_NM,
+            CELL,
+            BRTH_MON_DAY,
+            SEX,
+            HOME_ZIP,
+            HOME_ADDR,
+            HOME_ADDR2,
+            HOME_TEL,
+            EMAIL,
+            MARKT_AGR_YN,
+            RDP_MST_IDX,
+            ORD_MST_IDX,
+            SALE_TYPE,
+            PROD_CD,
+            PROD_KIND,
+            MODEL_CD,
+            INSPL_ZIP,
+            INSPL_ADDR,
+            INSPL_ADDR2,
+            HPCALL_TIME,
+            MAIN_CONTRACT,
+            CURRENT_TIMESTAMP,
+            ORD_MST_VDR_BNF_ID
+        FROM T_ORD_DLCC
+        WHERE ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 상품발주조회 정보 조회 -->
+    <select id="selectDeliverySupportInfo" parameterType="HashMap" resultType="HashMap">
+    /* Support.selectDeliverySupportInfo */
+        SELECT 
+            VOM.ORD_MST_IDX
+            ,VOM.MEM_NM
+            ,VOM.CELL
+            ,TPM.PRD_MST_SPL_NM
+            ,OM.ORD_MST_DLV_ING_DT
+            ,OD.INSPL_MEM_NM
+            ,OD.INSPL_ADDR||OD.INSPL_ADDR2 AS INSPL_ADDR 
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND OM.ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택/지원(포인트)상세 정보 조회 -->
+    <select id="selectBenefitSupportInfo" parameterType="HashMap" resultType="HashMap">
+    /* Support.selectBenefitSupportInfo */
+        SELECT 
+            VOM.ACCNT_NO
+            ,VOM.MEM_NM
+            ,CPM.PRD_MST_NM
+            ,(SELECT NVL(MAX(VOD.PAY_NO),0) FROM V_ORD_DPS VOD WHERE OM.ORD_MST_IDX = VOD.ORD_MST_IDX) AS PAY_NO
+            ,(SELECT NVL(MAX(VOD.PAY_NO),0) FROM V_ORD_DPS VOD WHERE OM.ORD_MST_IDX = VOD.ORD_MST_IDX AND ORD_BNF_YN = 'Y' ) AS BENEFIT_NO
+            ,VPM.EXPR_NO
+            ,VPM.REL_CNT
+            ,VPM.MODEL_CL_NM
+            ,TPM.PRD_MST_SPL_NM
+            ,VPM.MODEL_NM
+            ,OM.ORD_MST_REG_DT
+            ,VOM.JOIN_DT
+        FROM T_ORD_MST OM, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND OM.ORD_MST_IDX = #{ORD_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택/지원(포인트)상세 납입 정보 조회 -->
+    <select id="selectBenefitSupportList" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectBenefitSupportList */
+        SELECT
+            VOM.ORD_MST_IDX
+            ,VOD.ACCNT_NO
+            ,VOD.PAY_NO 
+            ,VOD.PAY_DAY
+            ,DECODE(VOD.ORD_MST_VDR_BNF_ID,NULL,OD.ORD_MST_VDR_BNF_ID, VOD.ORD_MST_VDR_BNF_ID) AS ORD_MST_VDR_BNF_ID
+            ,DECODE(VOD.PRD_MST_SPT_TXT,NULL,CPM.PRD_MST_SPT_TXT, VOD.PRD_MST_SPT_TXT) AS PRD_MST_SPT_TXT
+            ,VOD.ORD_BNF_DT
+            ,NVL(VOD.ORD_BNF_YN,'N') AS ORD_BNF_YN
+        FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+        WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+        AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PROD_CD = VPM.PROD_CD
+        AND CPM.PROD_KIND = VPM.PROD_KIND
+        AND CPM.MODEL_CD = VPM.MODEL_CD
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND CPM.PRD_MST_BND_YN = 'N'
+        AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+        AND VOD.PAY_NO <![CDATA[<=]]> VPM.REL_CNT
+        AND OM.ORD_MST_IDX = #{ORD_MST_IDX}
+        ORDER BY PAY_NO DESC
+    </select>
+    <!-- 관리자 > 발주/혜택관리 > 혜택/지원(포인트) 대상 유효성 체크 -->
+    <select id="selectBenefitTargetCount" parameterType="HashMap" resultType="Integer">
+        /* Support.selectBenefitTargetCount */
+        SELECT COUNT(ACCNT_NO)
+        FROM V_ORD_DPS
+        WHERE ACCNT_NO = #{ACCNT_NO} 
+        AND PAY_NO = #{PAY_NO}
+        AND ORD_BNF_YN = 'N'
+    </select>
+    
+    <!-- 관리자 > 발주/혜택관리 > 혜택/지원(포인트) 알림톡 대상 조회 -->
+    <select id="selectBenefitAlimTalkInfo" parameterType="HashMap" resultType="HashMap">
+        /* Support.selectBenefitAlimTalkInfo */
+        SELECT
+            VOD.ORD_MST_IDX
+            ,(SELECT VOM.MEM_NM FROM V_ORD_MST VOM WHERE VOM.ORD_MST_IDX = VOD.ORD_MST_IDX) AS MEM_NM
+            ,(SELECT VOM.CELL FROM V_ORD_MST VOM WHERE VOM.ORD_MST_IDX = VOD.ORD_MST_IDX) AS CELL
+            ,VOD.ACCNT_NO
+            ,VOD.PAY_NO 
+            ,VOD.PAY_DAY
+            ,VOD.ORD_MST_VDR_BNF_ID
+            ,(SELECT OD.ORD_MST_VDR_BNF_ID FROM T_ORD_DLCC OD WHERE OD.ORD_MST_IDX = VOD.ORD_MST_IDX) AS OD_ORD_MST_VDR_BNF_ID
+            ,VOD.PRD_MST_SPT_TXT
+            ,TO_CHAR(TO_DATE(VOD.ORD_BNF_DT, 'YYYY-MM-DD'),'YYYY.MM.DD') AS ORD_BNF_DT
+        FROM V_ORD_DPS VOD
+        WHERE ACCNT_NO = #{ACCNT_NO} 
+        AND PAY_NO = #{PAY_NO}
+    </select>    
+</mapper>

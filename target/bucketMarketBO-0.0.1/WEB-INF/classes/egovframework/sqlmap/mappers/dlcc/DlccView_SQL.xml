@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DlccViewMapper">
+    
+    <resultMap id="B2bComResultMap" type="web.batch.model.B2bComModel">
+        <result property="b2bCd"            column="B2B_CD" />
+        <result property="b2bNm"            column="B2B_NM" />
+        <result property="saleType"         column="SALE_TYPE" />
+    </resultMap>
+    
+    <resultMap id="ProductResultMap" type="web.batch.model.ProductModel">
+        <result property="prodCd"           column="PROD_CD" />
+        <result property="prodKind"         column="PROD_KIND" />
+        <result property="modelCd"          column="MODEL_CD" />
+        <result property="modelClNm"        column="MODEL_CL_NM" />
+        <result property="modelNm"          column="MODEL_NM" />
+        <result property="discontinuedDt"   column="DISCONTINUED_DT" />
+        <result property="prodAmt"          column="PROD_AMT" />
+        <result property="monPayAmt"        column="MON_PAY_AMT" />
+        <result property="exprNo"           column="EXPR_NO" />
+        <result property="relAmt"           column="REL_AMT" />
+        <result property="relCnt"           column="REL_CNT" />
+    </resultMap>
+    
+    <resultMap id="OrderMstResultMap" type="web.batch.model.OrderMstModel">
+        <result property="ordMstIdx"        column="ORD_MST_IDX"/>
+        <result property="accntNo"          column="ACCNT_NO"/>
+        <result property="ciVal"            column="CI_VAL"/>
+        <result property="memNm"            column="MEM_NM"/>
+        <result property="cell"             column="CELL"/>
+        <result property="brthMonDay"       column="BRTH_MON_DAY"/>
+        <result property="sex"              column="SEX"/>
+        <result property="homeZip"          column="HOME_ZIP"/>
+        <result property="homeAddr"         column="HOME_ADDR"/>
+        <result property="homeAddr2"        column="HOME_ADDR2"/>
+        <result property="homeTel"          column="HOME_TEL"/>
+        <result property="email"            column="EMAIL"/>
+        <result property="prodCd"           column="PROD_CD"/>
+        <result property="prodModelKind"    column="PROD_MODEL_KIND"/>
+        <result property="prodModelCd"      column="PROD_MODEL_CD"/>
+        <result property="prodModelNm"      column="PROD_MODEL_NM"/>
+        <result property="regDm"            column="REG_DM"/>
+        <result property="joinDt"           column="JOIN_DT"/>
+        <result property="kstbit"           column="KSTBIT"/>
+        <result property="insplZip"         column="INSPL_ZIP"/>
+        <result property="insplAddr"        column="INSPL_ADDR"/>
+        <result property="insplAddr2"       column="INSPL_ADDR2"/>
+        <result property="mainContract"     column="MAIN_CONTRACT"/>
+        <result property="dedNo"            column="DED_NO"/>
+        <result property="payMthd"          column="PAY_MTHD"/>
+        <result property="resortNo"         column="RESORT_NO"/>
+        <result property="resnProcDay"      column="RESN_PROC_DAY"/>
+        <result property="resnProcYn"       column="RESN_PROC_YN"/>
+        <result property="eventCompDay"     column="EVENT_COMP_DAY"/>
+    </resultMap>
+    
+    <resultMap id="OrderDpsResultMap" type="web.batch.model.OrderDpsModel">
+        <result property="ordMstIdx"        column="ORD_MST_IDX"/>
+        <result property="payNo"            column="PAY_NO"/>
+        <result property="accntNo"          column="ACCNT_NO"/>
+        <result property="payDay"           column="PAY_DAY"/>
+        <result property="payMthd"          column="PAY_MTHD"/>
+        <result property="payAmt"           column="PAY_AMT"/>
+        <result property="relAmt"           column="REL_AMT"/>
+        <result property="addAmt"           column="ADD_AMT"/>
+        <result property="payInDay"         column="PAY_IN_DAY"/>
+    </resultMap>
+    
+    <resultMap id="OrderCnlResultMap" type="web.batch.model.OrderCnlModel">
+        <result property="prodCd"           column="PROD_CD"/>
+        <result property="no"               column="NO"/>
+        <result property="appDay"           column="APP_DAY"/>
+        <result property="resnAmt"          column="RESN_AMT"/>
+    </resultMap>
+    
+    <resultMap id="OrderRmtResultMap" type="web.batch.model.OrderRmtModel">
+        <result property="ordMstIdx"        column="ORD_MST_IDX"/>
+        <result property="accntNo"          column="ACCNT_NO"/>
+        <result property="alowDt"           column="ALOW_DT"/>
+        <result property="alowAmt"          column="ALOW_AMT"/>
+        <result property="regMan"           column="REG_MAN"/>
+        <result property="regDm"            column="REG_DM"/>
+    </resultMap>
+    
+    <resultMap id="RmtBasicResultMap" type="web.batch.model.RmtBasicModel">
+        <result property="prodCd"           column="PROD_CD"/>
+        <result property="saleType"         column="SALE_TYPE"/>
+        <result property="saleTypeNm"       column="SALE_TYPE_NM"/>
+        <result property="b2bCompCd"        column="B2B_COMP_CD"/>
+        <result property="b2bCompNm"        column="B2B_COMP_NM"/>
+        <result property="amt"              column="AMT"/>
+        <result property="payNo"            column="PAY_NO"/>
+        <result property="payNoEnd"         column="PAY_NO_END"/>
+        <result property="prodJoinDtStr"    column="PROD_JOIN_DT_STR"/>
+        <result property="prodJoinDtEnd"    column="PROD_JOIN_DT_END"/>
+    </resultMap>
+    
+    <select id="selectB2bCompanyList" resultMap="B2bComResultMap">
+        /* DlccViewMapper.selectB2bCompanyList [doJob01:B2B업체정보] */
+        SELECT
+              B2B_CD
+            , B2B_NM
+            , SALE_TYPE
+        FROM DLCCSUB.DR_V_B2B_MST
+    </select>
+    
+    <select id="selectProductList" resultMap="ProductResultMap">
+        /* DlccViewMapper.selectProductList [doJob02:상품정보] */
+        SELECT 
+              PROD_CD
+            , PROD_KIND 
+            , MODEL_CD 
+            , MODEL_CL_NM 
+            , MODEL_NM
+            , DISCONTINUED_DT
+            , PROD_AMT
+            , MON_PAY_AMT 
+            , EXPR_NO
+            , REL_AMT 
+            , REL_CNT
+        FROM DLCCSUB.DR_V_PRD_MST
+    </select>
+    
+    <select id="selectOrderMstList" resultMap="OrderMstResultMap">
+        /* DlccViewMapper.selectOrderMstList [doJob04:가입정보] */
+        SELECT 
+              ORD_MST_IDX
+            , ACCNT_NO
+            , CI_VAL
+            , MEM_NM
+            , CELL
+            , BRTH_MON_DAY
+            , SEX
+            , HOME_ZIP
+            , HOME_ADDR
+            , HOME_ADDR2
+            , HOME_TEL
+            , EMAIL
+            , PROD_CD
+            , PROD_MODEL_KIND
+            , PROD_MODEL_CD
+            , PROD_MODEL_NM
+            , TO_CHAR(REG_DM, 'YYYYMMDDHH24MISS') REG_DM
+            , JOIN_DT
+            , KSTBIT
+            , INSPL_ZIP
+            , INSPL_ADDR
+            , INSPL_ADDR2
+            , MAIN_CONTRACT
+            , DED_NO
+            , PAY_MTHD
+            , RESORT_NO
+            , RESN_PROC_DAY
+            , RESN_PROC_YN
+            , EVENT_COMP_DAY
+        FROM DLCCSUB.DR_V_ORD_MST
+        WHERE ORD_MST_IDX IS NOT NULL
+        AND SUBSTR(ORD_MST_IDX,0,1) IN ('P','M','A')
+    </select>
+    
+    <select id="selectOrderDpsList" resultMap="OrderDpsResultMap" parameterType="java.lang.String">
+    /* DlccViewMapper.selectOrderDpsList [doJob05De1:상세정산정보] */
+        SELECT 
+              ORD_MST_IDX
+            , PAY_NO
+            , ACCNT_NO
+            , PAY_DAY
+            , PAY_MTHD
+            , PAY_AMT
+            , REL_AMT
+            , ADD_AMT
+            , PAY_IN_DAY
+        FROM DLCCSUB.TB_DR_I_ORD_DPS
+        WHERE PAY_IN_DAY = #{payInDay}
+        AND SUBSTR(ORD_MST_IDX,0,1) IN ('P','M','A')
+    </select>
+    
+    <select id="selectOrderCnlList" resultMap="OrderCnlResultMap" parameterType="java.lang.String">
+    /* DlccViewMapper.selectOrderCnlList [doJob06:해약환급금정보] */
+        SELECT 
+              PROD_CD
+            , NO
+            , RESN_AMT
+            , APP_DAY
+        FROM DLCCSUB.DR_V_ORD_CNL
+        WHERE PROD_CD = #{prodCd}
+        AND APP_DAY <![CDATA[<=]]> TO_CHAR(SYSDATE, 'YYYYMMDD')
+    </select>
+    
+    <select id="selectOrderRmtList" resultMap="OrderRmtResultMap">
+    /* DlccViewMapper.selectOrderRmtList [doJob09:레디플래너정산정보]*/
+        SELECT 
+              ORD_MST_IDX
+            , ACCNT_NO
+            , ALOW_DT
+            , ALOW_AMT
+            , REG_MAN
+            , TO_CHAR(REG_DM, 'YYYYMMDDHH24MISS') REG_DM
+        FROM DLCCSUB.TB_DR_I_RMT_ORD
+        WHERE ALOW_DT = TO_CHAR(SYSDATE, 'YYYYMM')
+    </select>
+    
+    <select id="selectRmtBasicList" resultMap="RmtBasicResultMap">
+    /* DlccViewMapper.selectRmtBasicList [doJob10:레디플레너기초정산정보]*/
+        SELECT 
+              PROD_CD
+            , SALE_TYPE
+            , SALE_TYPE_NM
+            , B2B_COMP_CD
+            , B2B_COMP_NM
+            , AMT
+            , PAY_NO
+            , PAY_NO_END
+            , PROD_JOIN_DT_STR
+            , PROD_JOIN_DT_END
+        FROM DLCCSUB.DR_V_RMT_BASIC
+    </select>
+    
+
+</mapper>
+
+
+<!-- 
+DLCCSUB.DR_V_B2B_MST : 1,666 rows       (B2B 업체정보)
+DLCCSUB.DR_V_PRD_MST : 55 rows          (상품마스터)
+DLCCSUB.DR_V_ORD_MST : 03.주문후        (주문마스터)
+
+DLCCSUB.DR_V_RMT_BASIC : 22 rows        (레디플래너 정산기초정보)
+-->

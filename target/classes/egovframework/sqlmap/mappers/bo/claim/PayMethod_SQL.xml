@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PayMethod">
+    <!-- 관리자 > 클레임 상담 조회 > 양도/양수 신청 > 조건절 -->
+    <sql id="payMethodWhere">
+        WHERE CA.ORD_MST_IDX = TOM.ORD_MST_IDX
+            AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND EXISTS (
+                SELECT *
+                FROM T_CMM_COM CC
+                WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+                    AND CC.CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_COMPLETE}'
+            )
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND CA.CLM_ACT_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchAccntNo != null and searchAccntNo != ''">
+            AND VOM.ACCNT_NO = #{searchAccntNo}
+        </if>
+        <if test="searchMemNm != null and searchMemNm != ''">
+            AND VOM.MEM_NM = #{searchMemNm} 
+        </if>
+        <if test="searchCell != null and searchCell != ''">
+            AND SUBSTR(VOM.CELL, -4) = #{searchCell}
+        </if>
+        <if test="searchCmnComIdx != null and searchCmnComIdx != ''">
+            AND CA.CMN_COM_IDX = #{searchCmnComIdx}
+        </if>
+    </sql>
+
+    <!-- 관리자 > 클레임 상담 조회 > 결제수단변경 신청 > 목록 개수 -->
+    <select id="selectPayMethodListCount" parameterType="HashMap" resultType="Integer">
+        /* PayMethod.selectPayMethodListCount */
+        SELECT COUNT(CA.CLM_ACT_IDX)
+        FROM T_CLM_ACT CA, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        <include refid="payMethodWhere"/>
+    </select>
+    <!-- 관리자 > 클레임 상담 조회 > 결제수단변경 신청 > 목록 -->
+    <select id="selectPayMethodList" parameterType="HashMap" resultType="HashMap">
+        /* PayMethod.selectPayMethodList */
+        SELECT S3.*,
+            S3.EXPR_CNT - S3.TRUE_CNT AS REMAINDER_CNT
+        FROM (
+            SELECT S2.*,
+                (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = S2.CMN_COM_IDX) AS CMN_COM_NM,
+                NVL((SELECT MAX(VOD.PAY_NO) FROM V_ORD_DTL VOD WHERE VOD.ORD_MST_IDX = S2.ORD_MST_IDX), 0) AS TRUE_CNT,
+                NVL(VPM.EXPR_NO, 0) AS EXPR_CNT,
+                VPM.MODEL_NM
+            FROM (
+                SELECT S1.*,
+                    ROWNUM AS RNUM
+                FROM (
+                    SELECT
+                        CA.CLM_ACT_IDX,
+                        TOM.ORD_MST_IDX,
+                        VOM.ACCNT_NO,
+                        CPM.PRD_MST_NO,
+                        CPM.PRD_MST_NM,
+                        VOM.MEM_NM,
+                        VOM.CELL,
+                        VOM.PROD_CD,
+                        VOM.PROD_KIND,
+                        VOM.MODEL_CD,
+                        TPM.PRD_MST_SPL_NM,
+                        TPM.PRD_MST_MD,
+                        CA.CLM_ACT_REG_DT,
+                        CA.CMN_COM_IDX
+                    FROM T_CLM_ACT CA, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+                    <include refid="payMethodWhere"/>
+                    ORDER BY CA.CLM_ACT_REG_DT DESC
+                ) S1
+                <if test="endNum != null and endNum != ''">
+                    WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+                </if>
+            ) S2, V_PRD_MST VPM
+            WHERE S2.PROD_CD = VPM.PROD_CD
+                AND S2.PROD_KIND = VPM.PROD_KIND 
+                AND S2.MODEL_CD = VPM.MODEL_CD
+            <if test="startNum != null and startNum != ''">
+                AND S2.RNUM <![CDATA[>=]]> #{startNum}
+            </if>
+        ) S3
+    </select>
+    
+    <!-- 관리자 > 클레임 상담 조회 > 결제수단변경 신청 > 상세 정보 -->
+    <select id="selectPayMethodInfo" parameterType="HashMap" resultType="HashMap">
+        /* PayMethod.selectPayMethodInfo */
+        SELECT
+            CA.CLM_ACT_IDX,
+            VOM.ACCNT_NO,
+            VOM.MEM_NM,
+            CPM.PRD_MST_NO,
+            CPM.PRD_MST_NM,
+            VPM.MON_PAY_AMT,
+            VOM.MODEL_CD,
+            VPM.MODEL_NM,
+            TPM.PRD_MST_SPL_NM,
+            TPM.PRD_MST_MD,
+            VOM.CELL,
+            DLCC.INSPL_ZIP,
+            DLCC.INSPL_ADDR,
+            DLCC.INSPL_ADDR2,
+            VOM.REG_DM,
+            VOM.JOIN_DT,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_UP_IDX = '${@common.code.Code@MEMBER_JOIN}' AND CC.CMN_COM_ETC1 = VOM.KSTBIT) AS KSTBIT,
+            VOM.DED_NO,
+            VOM.PAY_MTHD,
+            OD.PAY_NO,
+            VPM.EXPR_NO,
+            OD.PAY_AMT,
+            OD.PAY_AMT1,
+            OD.PAY_AMT2,
+            CA.CLM_ACT_REG_DT,
+            CPM.PRD_MST_TYPE,
+            CLM_ACT_PAY,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CA.CLM_ACT_PAY) AS CLM_ACT_PAY_NM,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CA.CLM_ACT_CRD) AS CLM_ACT_CRD_NM,
+            CLM_ACT_CRD_NO,
+            CLM_ACT_CRD_YY,
+            CLM_ACT_CRD_MM,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CA.CLM_ACT_BNK) AS CLM_ACT_BNK_NM,
+            CLM_ACT_BNK_ACT,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CA.CLM_ACT_PAY_DT) AS CLM_ACT_PAY_DT_NM,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CA.CLM_ACT_HPC) AS CLM_ACT_HPC_NM,
+            CA.CMN_COM_IDX
+        FROM T_CLM_ACT CA, T_ORD_MST TOM, V_ORD_MST VOM, T_ORD_DLCC DLCC, C_PRD_MST CPM, T_PRD_MST TPM, V_PRD_MST VPM,
+            (
+                SELECT
+                    OD.ORD_MST_IDX,
+                    MAX(OD.PAY_NO) AS PAY_NO,
+                    SUM(OD.PAY_AMT) AS PAY_AMT,
+                    SUM(OD.PAY_AMT1) AS PAY_AMT1,
+                    SUM(OD.PAY_AMT2) AS PAY_AMT2
+                FROM V_ORD_DTL OD, T_CLM_ACT CA
+                WHERE OD.ORD_MST_IDX = CA.ORD_MST_IDX 
+                    AND CA.CLM_ACT_IDX = #{CLM_ACT_IDX}
+                GROUP BY OD.ORD_MST_IDX
+            ) OD
+        WHERE CA.ORD_MST_IDX = TOM.ORD_MST_IDX
+            AND CA.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND CA.ORD_MST_IDX = DLCC.ORD_MST_IDX
+            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND TOM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND CA.CLM_ACT_IDX = #{CLM_ACT_IDX}
+    </select>
+    
+    <!-- 관리자 > 클레임 상담 조회 > 결제수단변경 신청 > 수정 -->
+    <update id="updatePayMethod" parameterType="HashMap">
+        /* PayMethod.updatePayMethod */
+        UPDATE T_CLM_ACT SET
+            CMN_COM_IDX = #{CMN_COM_IDX},
+            CLM_ACT_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            CLM_ACT_UPD_IP = #{CLM_ACT_UPD_IP},
+            CLM_ACT_UPD_ID = #{CLM_ACT_UPD_ID}
+        WHERE CLM_ACT_IDX = #{CLM_ACT_IDX}
+    </update>
+</mapper>

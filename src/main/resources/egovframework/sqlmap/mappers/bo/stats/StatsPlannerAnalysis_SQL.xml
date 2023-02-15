@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="StatsPlannerAnalysis">
+
+    <!-- 통계 조건절  -->
+    <sql id="statsJoinAnalysisWhere">
+        <if test="searchAgent != null and searchAgent != ''">
+            AND OM.ORD_MST_AGT = #{searchAgent}
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('Y')">
+            AND OD.RDP_MST_IDX IS NOT NULL
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('N')">
+            AND OD.RDP_MST_IDX IS NULL
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PM.PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchProdCd != null and searchProdCd != ''">
+            AND PM.PROD_CD  LIKE '%' || UPPER(#{searchProdCd}) || '%'
+        </if>
+        <if test="searchPrdCtgIdx != null and searchPrdCtgIdx != ''">
+            AND PM.PRD_CTG_IDX = #{searchPrdCtgIdx}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 통계 > 플래너분석 > 요약 -->
+    <select id="selectStatsPlannerSummary1" parameterType="HashMap" resultType="HashMap">
+        /* StatsPlannerAnalysis.selectStatsPlannerSummary1 */
+        SELECT 
+            COUNT(1) AS PLANNER_TOTAL,
+            SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_APPLY}, 1, 0)) + SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_REJECT}, 1, 0)) AS PLANNER_APPLY, -- 신청
+            SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_APPROVAL}, 1, 0)) + SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_INACTIVE}, 1, 0)) AS PLANNER_INACTIVE, -- 활동대기
+            SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_ACTIVE}, 1, 0)) AS PLANNER_ACTIVE, -- 정상 
+            SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_STOP}, 1, 0)) AS PLANNER_STOP, -- 정지
+            SUM(DECODE(RDP_MST_STATE, ${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE}, 1, 0)) AS PLANNER_REQUEST_RELEASE -- 해제요청
+        FROM 
+            T_RDP_MST
+    </select>
+    
+    <!-- 관리자 > 통계 > 플래너분석 > 요약 -->
+    <select id="selectStatsPlannerSummary2" parameterType="HashMap" resultType="HashMap">
+        /* StatsPlannerAnalysis.selectStatsPlannerSummary2 */
+        SELECT
+            SUM(DECODE(RDP_MST_BUSI_CLS, ${@common.code.Code@PLANNER_BUSINESS_CLASS_PRIVATE}, 1, 0)) AS PLANNER_PRIVATE, -- 개인
+            SUM(DECODE(RDP_MST_BUSI_CLS, ${@common.code.Code@PLANNER_BUSINESS_CLASS_NATURAL_PERSON}, 1, 0)) AS PLANNER_NATURAL_PERSON, -- 개인사업자(세금N)
+            SUM(DECODE(RDP_MST_BUSI_CLS, ${@common.code.Code@PLANNER_BUSINESS_CLASS_LEGAL_PERSON}, 1, 0)) AS PLANNER_LEGAL_PERSON, -- 법인/개인사업자(세금Y)
+            SUM(DECODE(RDP_MST_DM_YN, 'N', 1, 0)) AS PLANNER_DM_N, -- 소속구분(일반)
+            SUM(DECODE(RDP_MST_DM_YN, 'Y', 1, 0)) AS PLANNER_DM_Y -- 소속구분(임직원)
+        FROM 
+            T_RDP_MST
+        WHERE
+            RDP_MST_STATE = ${@common.code.Code@PLANNER_STATE_ACTIVE} OR RDP_MST_STATE = ${@common.code.Code@PLANNER_STATE_STOP} OR RDP_MST_STATE = ${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE} -- 정상, 정지, 해제요청
+    </select>
+    
+</mapper>

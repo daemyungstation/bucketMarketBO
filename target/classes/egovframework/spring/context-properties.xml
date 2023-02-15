@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+    <util:properties id="resource" location="classpath:/egovframework/properties/resource.properties"/>
+    <context:property-placeholder properties-ref="resource"/>
+    
+    <util:properties id="file" location="classpath:/egovframework/properties/file.properties"/>
+    <context:property-placeholder properties-ref="file"/>
+    
+    <util:properties id="pg" location="classpath:/egovframework/properties/pg.properties"/>
+    <context:property-placeholder properties-ref="pg"/>
+    
+    <bean name="propertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/resource.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+    
+    <bean name="pgPropertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/pg.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+    
+    <bean name="filePropertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/file.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+    
+    <bean name="bankingPropertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/banking.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+    
+    <bean name="sciPropertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/sci.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+    
+    <bean name="messagePropertiesService" class="egovframework.rte.fdl.property.impl.EgovPropertyServiceImpl" destroy-method="destroy">
+        <property name="extFileName">
+            <set>
+                <map>
+                    <entry key="encoding" value="UTF-8"/>
+                    <entry key="filename" value="classpath:/egovframework/properties/message.properties"/>
+                </map>
+            </set>
+        </property>
+    </bean>
+</beans>

@@ -1,0 +1,251 @@
+package web.bo.planner.controller;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.Code;
+import common.code.Dlcc;
+import common.model.Manager.ROLE_MANAGER;
+import common.model.Paging;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.viewer.EXCEL;
+import common.viewer.JSON;
+import web.bo.planner.service.CommonPlannerService;
+import web.bo.planner.service.PlannerCalculateService;
+
+/**
+ * <pre>
+ * &#64;PackageName: web.bo.planner.controller
+ * &#64;FileName : PlannerCalculateController.java
+ * &#64;Date : 2020. 4. 3.
+ * &#64;프로그램 설명 : 관리자 > 레디플래너 > 플래너 정산
+ * &#64;author upleat
+ * </pre>
+ */
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class PlannerCalculateController {
+
+    @Resource(name = "commonPlannerService")
+    private CommonPlannerService commonPlannerService;
+
+    @Resource(name = "plannerCalculateService")
+    private PlannerCalculateService plannerCalculateService;
+
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculateList
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 플래너 정산
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerCalculateList")
+    public ModelAndView plannerCalculateList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+
+        // 기본값
+        LocalDate date = LocalDate.now();
+        commandMap.put("searchCalculateYear", StringUtil.getInt(commandMap, "searchCalculateYear", date.getYear()));
+        commandMap.put("searchCalculateMonth", StringUtil.getInt(commandMap, "searchCalculateMonth", date.getMonthValue()));
+
+        // 목록 개수
+        int totalCount = this.plannerCalculateService.selectPlannerCalculateListCount(commandMap);
+
+        // 페이징
+        Paging paging = new Paging(totalCount, commandMap);
+        mv.addObject("paging", paging);
+        commandMap.put("startNum", paging.getStartNum());
+        commandMap.put("endNum", paging.getEndNum());
+
+        // 목록
+        List<Map<String, Object>> list = null;
+        if (totalCount > 0) {
+            list = this.plannerCalculateService.selectPlannerCalculateList(commandMap);
+        }
+
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("list", list);
+
+        mv.setViewName("bo/planner/plannerCalculateList");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculateExcelDownload
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 플래너 정산 > 엑셀 다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerCalculateExcelDownload")
+    public EXCEL plannerCalculateExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.plannerCalculateService.selectPlannerCalculateList(commandMap);
+        if (list != null) {
+            for (Map<String, Object> item : list) {
+                int RDP_MST_BUSI_CLS = StringUtil.getInt(item, "RDP_MST_BUSI_CLS");
+                if (RDP_MST_BUSI_CLS == Code.PLANNER_BUSINESS_CLASS_PRIVATE) {
+                    item.put("RDP_MST_SSN", StringUtil.getString(item, "RDP_MST_SSN1") + "-" + StringUtil.getString(item, "RDP_MST_SSN2"));
+                } else {
+                    item.put("RDP_MST_BUSI", StringUtil.getString(item, "RDP_MST_BUSI1") + "-" + StringUtil.getString(item, "RDP_MST_BUSI2") + "-" + StringUtil.getString(item, "RDP_MST_BUSI3"));
+                }
+            }
+            excel.put("fileName", "daemyung_planner_calculate_" + DateUtil.getCurrentDateTime());
+            List<String[]> column = new ArrayList<>();
+            column.add(new String[] { "플래너번호", "RDP_MST_NO", "String", "50" });
+            column.add(new String[] { "이름", "RDP_MST_MEM_NM", "String", "80" });
+            column.add(new String[] { "연락처", "RDP_MST_HP", "String", "80" });
+            column.add(new String[] { "정산금액", "TOTAL_ALOW_AMT", "String", "50" });
+            column.add(new String[] { "사업자유형", "RDP_MST_BUSI_CLS_NM", "String", "50" });
+            column.add(new String[] { "주민등록번호", "RDP_MST_SSN", "String", "50" });
+            column.add(new String[] { "사업자번호", "RDP_MST_BUSI", "String", "50" });
+            column.add(new String[] { "지급여부", "RMT_ORD_YN", "String", "50" });
+            column.add(new String[] { "지급일", "RMT_ORD_UPD_DT", "String", "50" });
+            excel.put("headerTitle", column.stream().map(a -> a[0]).toArray(String[]::new));
+            excel.put("cellField", column.stream().map(a -> a[1]).toArray(String[]::new));
+            excel.put("cellType", column.stream().map(a -> a[2]).toArray(String[]::new));
+            excel.put("colSize", column.stream().map(a -> a[3]).toArray(String[]::new));
+            excel.put("list", list);
+        }
+        return excel;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculatePaymentAjax
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 플래너 정산 > 지급 요청
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "bo/planner/plannerCalculatePaymentAjax")
+    public JSON plannerCalculatePaymentAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        json.addObject("isSuccess", (this.plannerCalculateService.requestCalculate(commandMap) > 0));
+        return json;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculateHistoryListPop
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 플래너 정산 > 정산금액 팝업
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 22.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = { "bo/planner/plannerCalculateHistoryListPopup", "bo/planner/plannerPaymentHistoryListPopup" })
+    public ModelAndView plannerCalculateHistoryListPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+
+        // 플래너 프로필 조회
+        Map<String, Object> profile = commonPlannerService.selectPlannerProfile(commandMap);
+        mv.addObject("info", profile);
+
+        // 목록 개수
+        int totalCount = this.plannerCalculateService.selectPlannerCalculateHistoryListCount(commandMap);
+
+        // 페이징
+        Paging paging = new Paging(totalCount, commandMap);
+        mv.addObject("paging", paging);
+        commandMap.put("startNum", paging.getStartNum());
+        commandMap.put("endNum", paging.getEndNum());
+
+        // 등급 조회
+        List<Map<String, Object>> list = null;
+        if (totalCount > 0) {
+            list = this.plannerCalculateService.selectPlannerCalculateHistoryList(commandMap);
+        }
+
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("list", list);
+
+        mv.setViewName("bo/planner/plannerCalculateHistoryListPopup");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : plannerCalculateExcelDownload
+     * 2. ClassName  : PlannerCalculateController.java
+     * 3. Comment    : 관리자 > 레디플래너 > 플래너 정산 > 정산금액 팝업 > 엑셀 다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 6.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = { "bo/planner/plannerCalculateHistoryListPopupExcelDownload", "bo/planner/plannerPaymentListPopupExcelDownload" })
+    public EXCEL plannerCalculateHistoryListPopupExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.plannerCalculateService.selectPlannerCalculateHistoryList(commandMap);
+        if (list != null) {
+            for (Map<String, Object> row : list) {
+                row.put("KSTBIT", Dlcc.JOIN_STATE.get(row.get("KSTBIT")));
+            }
+            excel.put("fileName", "daemyung_planner_calculate_history_" + DateUtil.getCurrentDateTime());
+            List<String[]> column = new ArrayList<>();
+            column.add(new String[] { "가입자명", "MEM_NM", "String", "50" });
+            column.add(new String[] { "연락처", "CELL", "String", "50" });
+            column.add(new String[] { "온라인 상품명", "PRD_MST_NM", "String", "50" });
+            column.add(new String[] { "접수일자", "ORD_MST_ORD_DT", "String", "50" });
+            column.add(new String[] { "가입일자", "JOIN_DT", "String", "50" });
+            column.add(new String[] { "가입상태", "KSTBIT", "String", "50" });
+            column.add(new String[] { "수당", "ALOW_AMT", "String", "50" });
+            column.add(new String[] { "지급여부", "RMT_ORD_YN", "String", "50" });
+            column.add(new String[] { "지급일", "RMT_ORD_UPD_DT", "String", "50" });
+            excel.put("headerTitle", column.stream().map(a -> a[0]).toArray(String[]::new));
+            excel.put("cellField", column.stream().map(a -> a[1]).toArray(String[]::new));
+            excel.put("cellType", column.stream().map(a -> a[2]).toArray(String[]::new));
+            excel.put("colSize", column.stream().map(a -> a[3]).toArray(String[]::new));
+            excel.put("list", list);
+        }
+        return excel;
+    }
+}

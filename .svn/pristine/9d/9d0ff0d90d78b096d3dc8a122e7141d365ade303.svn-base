@@ -1,0 +1,224 @@
+package web.bo.product.service.impl;
+
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+
+import common.code.Product;
+import common.dao.CommonDefaultDAO;
+import common.util.FileUploadUtil;
+import common.util.StringUtil;
+import lombok.extern.log4j.Log4j2;
+import web.bo.product.service.ProductImageService;
+
+@Service("productImageService")
+public class ProductImageServiceImpl implements ProductImageService {
+
+    @Resource(name = "defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+
+    @Autowired
+    FileUploadUtil fileUploadUtil;
+
+    @Value("#{file['file.thumbnail.size.product']}")
+    private String thumbnailWidth;
+
+    private static final List<String> FILE_NAME_LIST = new LinkedList<String>() {
+        private static final long serialVersionUID = 2572267365288392680L;
+        {
+            add(Product.IMG_MAIN_NM);
+            for (String imgSubNm : Product.IMG_SUB_NMS) {
+                add(imgSubNm);
+            }
+        }
+    };
+
+    private static final String UPLOAD_PATH = "product";
+    private static final String UPLOAD_ALLOW = "image";
+    /**
+     * <pre>
+     * 1. MethodName : isNotEmpty
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 첨부파일 Null Check
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 6.
+     * </pre>
+     *
+     * @param file
+     * @return
+     */
+    private boolean isNotEmpty (MultipartFile file) {
+        boolean result = false;
+        if (file != null) {
+            if (!file.isEmpty()) {
+                result = true;
+            }
+        }
+        return result;
+    }
+    /**
+     * <pre>
+     * 1. MethodName : uploadProductImage
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 상품 이미지 업로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @param file
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    private Map<String, Object> uploadProductImage(CommonsMultipartFile file, Map<String, Object> commandMap) throws Exception {
+        return fileUploadUtil.execute(commandMap, file, UPLOAD_PATH, UPLOAD_ALLOW);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectProductImageList
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품이미지 > 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 6.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> selectProductImageList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("ProductImage.selectProductImageList", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectProductImageInfo
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품이미지 > 상세정보
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @see web.bo.product.service.ProductImageService#selectProductImageInfo(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectProductImageInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        commandMap.put("PRD_IMG_ATT_SIZE", "0");
+        List<Map<String, Object>> productImageList = selectProductImageList(commandMap);
+        for (Map<String, Object> productImageInfo : productImageList) {
+            String PRD_IMG_GBN = StringUtil.getString(productImageInfo, "PRD_IMG_GBN", "");
+            if (Product.IMG_SUB.equals(PRD_IMG_GBN)) {
+                returnMap.put(PRD_IMG_GBN + "_" + StringUtil.getString(productImageInfo, "PRD_IMG_SORT", ""), productImageInfo);
+            } else {
+                returnMap.put(PRD_IMG_GBN, productImageInfo);
+            }
+        }
+        return returnMap;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : insertProductImage
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품이미지 > 등록 (파일 업로드)
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @see web.bo.product.service.ProductImageService#insertProductImage(org.springframework.web.multipart.MultipartHttpServletRequest,
+     *      java.util.Map)
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertProductImage(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        String CODE = StringUtil.getString(commandMap, "PRD_MST_CD", "");
+        commandMap.put("CODE", CODE);
+        commandMap.put("PREFIX", "PRD_IMG");
+        MultipartFile file = null;
+        for (String fileName : FILE_NAME_LIST) {
+            file = request.getFile(fileName);
+            if (isNotEmpty(file)) {
+                fileName = fileName.replaceAll("FILE_", "");
+                commandMap.put("THUMBNAIL_WIDTHS", thumbnailWidth.split("\\|"));
+                if (fileName.contains(Product.IMG_MAIN)) {
+                    commandMap.put("PRD_IMG_SORT", "0");
+                    commandMap.put("PRD_IMG_GBN", Product.IMG_MAIN);
+                } else if (fileName.contains(Product.IMG_SUB)) {
+                    commandMap.put("PRD_IMG_SORT", fileName.replaceAll("[^0-9]", ""));
+                    commandMap.put("PRD_IMG_GBN", Product.IMG_SUB);
+                }
+                commandMap.put("FILE_NAME", fileName.toLowerCase());
+                Map<String, Object> resultMap = uploadProductImage((CommonsMultipartFile) file, commandMap);
+                String[] PRD_IMG_SYS_NMs = StringUtil.getArray(resultMap, "PRD_IMG_SYS_NM");
+                String[] PRD_IMG_ATT_SIZEs = StringUtil.getArray(resultMap, "PRD_IMG_ATT_SIZE");
+                String[] PRD_IMG_WEB_PATHs = StringUtil.getArray(resultMap, "PRD_IMG_WEB_PATH");
+                for (int i = 0; i < PRD_IMG_SYS_NMs.length; i++) {
+                    resultMap.put("PRD_IMG_SYS_NM", PRD_IMG_SYS_NMs[i]);
+                    resultMap.put("PRD_IMG_ATT_SIZE", PRD_IMG_ATT_SIZEs[i]);
+                    resultMap.put("PRD_IMG_WEB_PATH", PRD_IMG_WEB_PATHs[i]);
+                    result += defaultDAO.insert("ProductImage.insertProductImage", resultMap);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : updateProductImage
+     * 2. ClassName  : ProductImageServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품이미지 > 수정 (파일 삭제 / 업로드)
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @see web.bo.product.service.ProductImageService#updateProductImage(org.springframework.web.multipart.MultipartHttpServletRequest,
+     *      java.util.Map)
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductImage(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        MultipartFile file = null;
+        for (String fileName : FILE_NAME_LIST) {
+            file = request.getFile(fileName);
+            if (isNotEmpty(file)) {
+                commandMap.put("PRD_IMG_SYS_NM", fileName.replaceAll("FILE_", "").toLowerCase());
+                List<Map<String, Object>> productImageList = selectProductImageList(commandMap);
+                for (Map<String, Object> productImageInfo : productImageList) {
+                    // 파일 DB 삭제
+                    result += defaultDAO.delete("ProductImage.deleteProductImage", productImageInfo);
+                    // 물리적 파일 삭제
+                    fileUploadUtil.delete2(StringUtil.getString(productImageInfo, "PRD_IMG_ATT_PATH"), StringUtil.getString(productImageInfo, "PRD_IMG_SYS_NM"), UPLOAD_ALLOW);
+                }
+            }
+        }
+        result += insertProductImage(request, commandMap);
+        
+        // 2020.08.14 UPEAT
+        // 이미지 검색 파라미터 초기화
+        commandMap.remove("PRD_IMG_SYS_NM");
+        
+        return result;
+    }
+}

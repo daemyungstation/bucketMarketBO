@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd">
+    <!-- 권한체크 -->
+    <bean id="pageRequestPermissionAdvice" class="common.advices.PageRequestPermissionAdvice"/>
+    <aop:config>
+        <aop:aspect ref="pageRequestPermissionAdvice" order="1">
+            <aop:pointcut id="pointcutPageRequestPermission"  expression="execution(* web.bo..*.controller.*.*(..))" />
+            <aop:before pointcut-ref="pointcutPageRequestPermission" method="checkPageRequestPermission" />
+        </aop:aspect>
+    </aop:config>
+    
+    <!-- 로그 -->
+    <bean id="commonAopLogger" class="common.advices.CommonAopLogger"/>
+    <aop:aspectj-autoproxy/>
+    <aop:config proxy-target-class="true">
+        <aop:aspect ref="commonAopLogger" order="1">
+            <aop:pointcut id="commonAopLoggerPointCut1" expression="execution(* web..*Controller.*(..)) &amp;&amp; !execution(* web.common..*Controller.*(..))" />
+            <aop:around pointcut-ref="commonAopLoggerPointCut1" method="logController" />
+        </aop:aspect>
+        <aop:aspect ref="commonAopLogger" order="1">
+            <aop:pointcut id="commonAopLoggerPointCut2"  expression="execution(* web..*ServiceImpl.*(..)) &amp;&amp; !execution(* web.common..*ServiceImpl.*(..))" />
+            <aop:around pointcut-ref="commonAopLoggerPointCut2" method="logService" />
+        </aop:aspect>
+    </aop:config>
+</beans>

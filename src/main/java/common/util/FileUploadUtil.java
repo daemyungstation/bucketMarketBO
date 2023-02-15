@@ -1,0 +1,643 @@
+package common.util;
+
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.annotation.Resource;
+import javax.imageio.ImageIO;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+
+import com.mortennobel.imagescaling.AdvancedResizeOp;
+import com.mortennobel.imagescaling.ResampleOp;
+
+import common.exception.FileUploadException;
+import egovframework.rte.fdl.property.EgovPropertyService;
+import lombok.extern.log4j.Log4j2;
+
+@Log4j2
+@Component
+public class FileUploadUtil {
+
+    @Resource(name="filePropertiesService")
+    protected EgovPropertyService filePropertiesService;
+
+    @Value("#{resource['cdn.domain']}")
+    private String cndDomain;
+    
+    @Value("#{resource['cdn.ssl.domain']}")
+    private String cdnSslDomain;
+    
+    @Value("#{resource['cdn.domain.editor']}")
+    private String cdnEditorDomain;
+    
+    @Value("#{resource['cdn.ssl.domain.editor']}")
+    private String cdnSslEditorDomain;
+
+    private static final int MAX_UPLOAD_SIZE = 20971520;
+    
+    /**
+     * <pre>
+     * 1. MethodName : getUploadPath
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 파일 유형에 따라 저장소 위치를 resource properties에서 호출하기 위한 NAME값 반환
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 6. 20.
+     * </pre>
+     *
+     * @param n
+     * @return
+     */
+    private String getUploadPath(String n) {
+        String p = "file.path.default";
+        if (!"".equals(n)) {
+            p = "file.path." + n;
+        }
+        return filePropertiesService.getString(p);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : getAllowFileExt
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 업로드 가능한 확장자를 반환한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 5. 16.
+     * </pre>
+     *
+     * @param a
+     * @return
+     */
+    private String getAllowFileExt(String a) {
+        String p = "file.allowed.extensions.default";
+        if (!"".equals(a)) {
+            p = "file.allowed.extensions." + a;
+        }
+        return filePropertiesService.getString(p);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : getAllowMaxFileSize
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 업로드 가능한 용량을 반환한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 5. 16.
+     * </pre>
+     *
+     * @param a
+     * @return
+     */
+    private int getAllowMaxFileSize(String a) {
+        String p = "file.max.byte.size.default";
+        if (!"".equals(a)) {
+            p = "file.max.byte.size." + a;
+        }
+        return filePropertiesService.getInt(p, MAX_UPLOAD_SIZE);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : makePath
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 폴더 PATH 생성
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 13.
+     * </pre>
+     *
+     * @param pathType
+     * @param dateFolderFlag
+     * @param code
+     * @return
+     */
+    private String makePath(String pathType, String dateFolderFlag, String code) {
+        String path = "";
+        path += path + getUploadPath(pathType) + "/";
+        if ("Y".equals(dateFolderFlag)) {
+            String month = String.valueOf(Calendar.getInstance().get(Calendar.MONTH) + 1);
+            if (month.length() == 1)
+                month = "0" + month;
+
+            String day = String.valueOf(Calendar.getInstance().get(Calendar.DATE));
+            if (day.length() == 1)
+                day = "0" + day;
+
+            path += Calendar.getInstance().get(Calendar.YEAR);
+            path += "/" + month + "/";
+            path += day + "/";
+        }
+        if (!"".equals(code)) {
+            path += code + "/";
+        }
+        return path;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : makeFileName
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 파일명 생성
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 13.
+     * </pre>
+     *
+     * @param fileExt
+     * @return
+     */
+    private String makeFileName(String fileExt) {
+        return UUID.randomUUID().toString() + "." + fileExt;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : validFileExt
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 첨부파일 확장자 유효성 체크
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @param allow
+     * @param fileExt
+     * @throws FileUploadException
+     */
+    private void validFileExt (String allow, String fileExt) throws FileUploadException {
+        String checkFileExts = getAllowFileExt(allow);
+        if (!checkFileExts.contains(fileExt)) {
+            String exceptionMessage = checkFileExts.replaceAll("\\|", ", ");
+            log.error("======================== 파일업로드 ========================");
+            log.error("업로드 확장자 : [{}]", fileExt);
+            log.error("업로드 가능 확장자 : [{}]", checkFileExts);
+            log.error("========================================================");
+            throw new FileUploadException("업로드 불가능한 확장자 입니다.\\n첨부파일 확장자를 확인 후 다시 시도 해 주십시오.\\n업로드 가능한 확장자[ " + exceptionMessage + " ]");
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : validFileSize
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 첨부파일 사이즈 유효성 체크
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @param allow
+     * @param fileSize
+     * @throws FileUploadException
+     */
+    private void validFileSize(String allow, long fileSize) throws FileUploadException {
+        if (fileSize > getAllowMaxFileSize(allow) || fileSize > MAX_UPLOAD_SIZE) {
+            log.error("업로드 사이즈 : [{}]", FormatUtil.byteCal(StringUtil.getString(fileSize)));
+            log.error("업로드 가능 사이즈 : [{}]", FormatUtil.byteCal(StringUtil.getString(getAllowMaxFileSize(allow))));
+            throw new FileUploadException("업로드 용량이 초과되었습니다.\\n첨부파일의 용량을 확인 후 다시 시도 해 주십시오.\\n최대 업로드 용량[ " + FormatUtil.byteCal(StringUtil.getString(getAllowMaxFileSize(allow))) + " ]");
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : execute
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 파일 업로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 23.
+     * </pre>
+     *
+     * @param commandMap
+     * @param multipartFile
+     * @param pathType
+     * @param allow
+     * @return
+     * @throws FileUploadException
+     * @throws IOException
+     */
+    public Map<String, Object> execute(Map<String, Object> commandMap, CommonsMultipartFile multipartFile, String pathType, String allow) throws FileUploadException, IOException {
+        String code = StringUtil.getString(commandMap, "CODE", "");
+        String fileName = StringUtil.getString(commandMap, "FILE_NAME", "");
+        String prefix = StringUtil.getString(commandMap, "PREFIX", "PRD_IMG");
+        if ("".equals(code) || "".equals(fileName)) {
+            throw new FileUploadException("필수정보가 누락 되었습니다.\\n확인 후 다시 시도해 주십시오.");
+        }
+        String originalFilename = multipartFile.getOriginalFilename();
+        if (StringUtils.hasLength(originalFilename)) {
+            String fileExt = StringUtils.getFilenameExtension(originalFilename).toLowerCase();
+            long fileSize = multipartFile.getSize();
+            validFileExt(allow, fileExt);
+            validFileSize(allow, fileSize);
+            
+            String uploadPath = filePropertiesService.getString("file.cdn.upload.path");
+            String attachPath = makePath(pathType, "N", code);
+            
+            String destFileDir = uploadPath + attachPath;
+            File destFile = new File(destFileDir);
+            if (!destFile.exists()) {
+                destFile.mkdirs();
+            }
+            try {
+                multipartFile.transferTo(new File(destFileDir + fileName + "." + fileExt));
+            } catch (IllegalStateException e) {
+                if (log.isDebugEnabled()) {
+                    e.printStackTrace();
+                } else {
+                    log.error(Arrays.toString(e.getStackTrace()));
+                }
+            } catch (IOException e) {
+                if (log.isDebugEnabled()) {
+                    e.printStackTrace();
+                } else {
+                    log.error(Arrays.toString(e.getStackTrace()));
+                }
+            }
+            Map<String, Object> resultMap = new HashMap<>();
+            /** 결과 값 반환 */
+            Iterator<String> iterator = commandMap.keySet().iterator();
+            while (iterator.hasNext()) {
+                String key = (String) iterator.next();
+                resultMap.put(key, commandMap.get(key));
+            }
+            resultMap.put(prefix + "_SYS_PATH", uploadPath);
+            resultMap.put(prefix + "_ATT_PATH", attachPath);
+            resultMap.put(prefix + "_ORG_NM", originalFilename);
+            resultMap.put(prefix + "_ATT_EXT", fileExt);
+            String [] thumbnailWidths = StringUtil.getArray(resultMap, "THUMBNAIL_WIDTHS");
+            if (thumbnailWidths.length > 0) {
+                List<String> webPaths = new ArrayList<>();
+                List<String> attSizes = new ArrayList<>();
+                List<String> sysNms = new ArrayList<>();
+                webPaths.add(attachPath + fileName + "." + fileExt);
+                attSizes.add("0");
+                sysNms.add(fileName + "." + fileExt);
+                for (String thumbnailWidth : thumbnailWidths) {
+                    String thumbnailName = fileName + "_" + thumbnailWidth;
+                    resultMap.put(prefix + "_THUMB_TGT_NM", fileName + "." + fileExt);
+                    resultMap.put(prefix + "_THUMB_NM", thumbnailName);
+                    resultMap.put(prefix + "_THUMBNAIL_WIDTH", thumbnailWidth);
+                    makeThumbnail(resultMap);
+                    thumbnailName += ".png";
+                    webPaths.add(attachPath + thumbnailName);
+                    attSizes.add(thumbnailWidth);
+                    sysNms.add(thumbnailName);
+                }
+                resultMap.put(prefix + "_WEB_PATH", webPaths.toArray(new String[webPaths.size()]));
+                resultMap.put(prefix + "_ATT_SIZE", attSizes.toArray(new String[attSizes.size()]));
+                resultMap.put(prefix + "_SYS_NM", sysNms.toArray(new String[sysNms.size()]));
+            } else {
+                resultMap.put(prefix + "_WEB_PATH", attachPath + fileName + "." + fileExt);
+                resultMap.put(prefix + "_ATT_SIZE", "0");
+                resultMap.put(prefix + "_SYS_NM", fileName + "." + fileExt);
+            }
+            resultMap.put("SUCCESS_YN", !multipartFile.isEmpty() ? "Y" : "N");
+            return resultMap;
+        } else {
+            throw new FileUploadException("업로드 파일이 누락되었습니다.");
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : execute
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 파일 업로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 13.
+     * </pre>
+     *
+     * @param commandMap
+     * @param multipartFile
+     * @param pathType
+     * @param allow
+     * @param dateFolderFlag
+     * @return
+     * @throws FileUploadException
+     * @throws IOException
+     */
+    public Map<String, Object> execute(Map<String, Object> commandMap, CommonsMultipartFile multipartFile, String pathType, String allow, String dateFolderFlag) throws FileUploadException, IOException {
+        String originalFilename = multipartFile.getOriginalFilename();
+        if (StringUtils.hasLength(originalFilename)) {
+            String fileExt = StringUtils.getFilenameExtension(originalFilename).toLowerCase();
+            long fileSize = multipartFile.getSize();
+            validFileExt(allow, fileExt);
+            validFileSize(allow, fileSize);
+            String webDomain = "";
+            String uploadPath = filePropertiesService.getString("file.docs.upload.path");
+            if ("image".equals(allow) || "video".equals(allow)) {
+                webDomain = cdnSslDomain;
+                uploadPath = filePropertiesService.getString("file.cdn.upload.path");
+            } else if ("editor".equals(allow)) {
+                webDomain = cdnSslEditorDomain;
+                uploadPath = filePropertiesService.getString("file.cdn.upload.path.editor");
+            }
+            String attachPath = makePath(pathType, dateFolderFlag, "");
+            String destFileDir = uploadPath + attachPath;
+            File destFile = new File(destFileDir);
+            if (!destFile.exists()) {
+                destFile.mkdirs();
+            }
+            
+            String fileName = makeFileName(fileExt);
+            String serverFileName = destFileDir + fileName;
+
+            try {
+                multipartFile.transferTo(new File(serverFileName));
+            } catch (IllegalStateException e) {
+                if (log.isDebugEnabled()) {
+                    e.printStackTrace();
+                } else {
+                    log.error(Arrays.toString(e.getStackTrace()));
+                }
+            } catch (IOException e) {
+                if (log.isDebugEnabled()) {
+                    e.printStackTrace();
+                } else {
+                    log.error(Arrays.toString(e.getStackTrace()));
+                }
+            }
+
+            Map<String, Object> resultMap = new HashMap<>();
+            /** 결과 값 반환 */
+            Iterator<String> iterator = commandMap.keySet().iterator();
+            while (iterator.hasNext()) {
+                String key = (String) iterator.next();
+                resultMap.put(key, commandMap.get(key));
+            }
+            resultMap.put("CMM_FLE_SYS_PATH", uploadPath);
+            resultMap.put("CMM_FLE_ATT_PATH", attachPath);
+            resultMap.put("CMM_FLE_ORG_NM", originalFilename);
+            resultMap.put("CMM_FLE_SYS_NM", fileName);
+            resultMap.put("CMM_FLE_ATT_SIZE", fileSize);
+            resultMap.put("CMM_FLE_ATT_EXT", fileExt);
+            resultMap.put("CMM_FLE_USE_YN", "Y");
+            resultMap.put("CMM_FLE_WEB_PATH", webDomain + attachPath + fileName);
+            resultMap.put("SUCCESS_YN", !multipartFile.isEmpty() ? "Y" : "N");
+            return resultMap;
+        } else {
+            throw new FileUploadException("업로드 파일이 누락되었습니다.");
+        }
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : excuteHtml5
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 첨부 파일 업로드 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 3.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @throws Exception
+     */
+    public void excuteHtml5(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        try {
+            PrintWriter print = response.getWriter();
+            // 파일명을 받는다 - 일반 원본파일명
+            String originalFilename = request.getHeader("file-name");
+            if (StringUtils.hasLength(originalFilename)) {
+                // 파일 확장자
+                String fileExt = StringUtils.getFilenameExtension(originalFilename).toLowerCase();
+                String allow = "editor";
+                /** 업로드 가능한 확장자 */
+                String checkFileExts = getAllowFileExt(allow);
+                if (!checkFileExts.contains(fileExt)) {
+                    print.print("NOTALLOW_" + checkFileExts.replaceAll("\\|", ", "));
+                    print.flush();
+                    print.close();
+                } else {
+                    String uploadPath = filePropertiesService.getString("file.cdn.upload.path.editor");
+                    String attachPath = makePath(allow, "Y", "");
+                    String destFileDir = uploadPath + attachPath;
+                    
+                    File file = new File(destFileDir);
+                    
+                    long fileSize = file.length();
+                    if (fileSize > getAllowMaxFileSize(allow) || fileSize > MAX_UPLOAD_SIZE) {
+                        print.print("NOTSIZE_" + FormatUtil.byteCal(StringUtil.getString(getAllowMaxFileSize(allow))));
+                        print.flush();
+                        print.close();
+                    } else {
+                        if (!file.exists()) {
+                            file.mkdirs();
+                        }
+                        String fileName = makeFileName(fileExt);
+                        String serverFileName = destFileDir + fileName;
+                        // /////////////// 서버에 파일쓰기 /////////////////
+                        InputStream is = request.getInputStream();
+                        OutputStream os = new FileOutputStream(serverFileName);
+                        int numRead;
+                        if (is != null) {
+                            byte b[] = new byte[StringUtil.getInt(request.getHeader("file-size"))];
+                            while ((numRead = is.read(b, 0, b.length)) != -1) {
+                                os.write(b, 0, numRead);
+                            }
+                        }
+                        if (is != null) {
+                            is.close();
+                        }
+                        os.flush();
+                        os.close();
+                        // /////////////// 서버에 파일쓰기 /////////////////
+                        // 파일정보
+                        String fileInfo = "";
+                        // 정보 출력
+                        fileInfo += "&bNewLine=true";
+                        // img 태그의 title 속성을 원본파일명으로 적용시켜주기 위함
+                        fileInfo += "&sFileName=" + fileName;
+                        fileInfo += "&sFileURL=" + cdnSslEditorDomain + attachPath + fileName;
+                        print.print(fileInfo);
+                        print.flush();
+                        print.close();
+                    }
+                }
+            } else {
+                print.print("NOTFILE");
+                print.flush();
+                print.close();
+            }
+        } catch (Exception e) {
+            if (log.isDebugEnabled()) {
+                e.printStackTrace();
+            } else {
+                log.error(Arrays.toString(e.getStackTrace()));
+            }
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : delete
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 첨부파일을 삭제한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 5. 16.
+     * </pre>
+     *
+     * @param targetFile
+     */
+    public void delete(String targetFile) {
+        File file = new File(targetFile);
+        if (file.exists()) {
+            if (file.delete()) {
+                log.error("========================================================================");
+                log.error("======================== File delete successful ========================");
+                log.error("========================================================================");
+            } else {
+                log.error("========================================================================");
+                log.error("=========================== File delete fail ===========================");
+                log.error("========================================================================");
+            }
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : delete2
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 첨부파일을 삭제한다. 
+     * 4. 작성자       : inus
+     * 5. 작성일       : 2020. 8. 14.
+     * </pre>
+     *
+     * @param attachPath
+     * @param fileName
+     * @param allow
+     */
+    public void delete2(String attachPath, String fileName, String allow) {
+        
+        String sysPath = filePropertiesService.getString("file.docs.upload.path");
+        if ("image".equals(allow)) {
+            sysPath = filePropertiesService.getString("file.cdn.upload.path");
+        } else if ("editor".equals(allow)) {
+            sysPath = filePropertiesService.getString("file.cdn.upload.path.editor");
+        }
+        delete2(sysPath + attachPath + fileName);
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : delete2
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 첨부파일을 삭제한다. (nas 대응?) 
+     * 4. 작성자       : inus
+     * 5. 작성일       : 2020. 8. 14.
+     * </pre>
+     *
+     * @param targetFile
+     */
+    public void delete2(String targetFile) {
+        File file = new File(targetFile);
+        if (file.exists()) {
+//            if (file.delete()) {
+//                log.error("========================================================================");
+//                log.error("======================== File delete successful ========================");
+//                log.error("========================================================================");
+//            } else {
+//                log.error("========================================================================");
+//                log.error("=========================== File delete fail ===========================");
+//                log.error("========================================================================");
+//            }
+        }
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : delete
+     * 2. ClassName  : FileUpload.java
+     * 3. Comment    : 첨부파일을 삭제한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 5. 16.
+     * </pre>
+     *
+     * @param attachPath
+     * @param fileName
+     * @param allow
+     */
+    public void delete(String attachPath, String fileName, String allow) {
+        
+        String sysPath = filePropertiesService.getString("file.docs.upload.path");
+        if ("image".equals(allow)) {
+            sysPath = filePropertiesService.getString("file.cdn.upload.path");
+        } else if ("editor".equals(allow)) {
+            sysPath = filePropertiesService.getString("file.cdn.upload.path.editor");
+        }
+        delete(sysPath + attachPath + fileName);
+    }
+    
+    
+    /**
+     * <pre>
+     * 1. MethodName : makeThumbnail
+     * 2. ClassName  : FileUploadUtil.java
+     * 3. Comment    : 프론트 사용자 등록 이미지 리사이즈
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 13.
+     * </pre>
+     *
+     * @param thumbnailWidth
+     * @param resultFile
+     * @throws IOException
+     */
+    public void makeThumbnail(Map<String, Object> commandMap) throws IOException {
+        
+        String prefix = StringUtil.getString(commandMap, "PREFIX", "CMM_FLE");
+        String orgFileName = StringUtil.getString(commandMap, prefix + "_THUMB_TGT_NM", "");
+        String serverFileName = StringUtil.getString(commandMap, prefix + "_SYS_PATH", "");
+        serverFileName += StringUtil.getString(commandMap, prefix + "_ATT_PATH", "");
+        serverFileName += orgFileName;
+        String targetFileName = StringUtil.getString(commandMap, prefix + "_SYS_PATH", "");
+        targetFileName += StringUtil.getString(commandMap, prefix + "_ATT_PATH", "");
+        targetFileName += StringUtil.getString(commandMap, prefix + "_THUMB_NM", orgFileName);
+        targetFileName += ".png";
+        int thumbnailWidth = StringUtil.getInt(commandMap, prefix + "_THUMBNAIL_WIDTH");
+        
+        log.debug("============== MAKE THUMBNAIL ==============");
+        log.debug("commandMap : [{}]", commandMap);
+        log.debug("serverFileName : [{}]", serverFileName);
+        log.debug("targetFileName : [{}]", targetFileName);
+        log.debug("============================================");
+        
+        File f = new File(serverFileName);
+        BufferedImage src = ImageIO.read(f);
+
+        Image srcImg = null;
+        srcImg = ImageIO.read(f);
+
+        int imageWidth = srcImg.getWidth(null);// 이미지 가로사이즈
+        int imageHeight = srcImg.getHeight(null);// 이미지 세로사이즈
+
+        // 비율 설정
+        double ratio = 1.0;
+
+        // 이미지가 원하는 크기보다 큰 경우(width값만 체크)만 리사이즈
+        if (imageWidth > thumbnailWidth) {
+            ratio = (double) thumbnailWidth / (double) imageWidth;
+        }
+
+        int destWidth = (int) (imageWidth * ratio);
+        int destHeight = (int) (imageHeight * ratio);
+
+        ResampleOp resampleOp = new ResampleOp(destWidth, destHeight);
+        resampleOp.setUnsharpenMask(AdvancedResizeOp.UnsharpenMask.VerySharp);
+        BufferedImage rescaled = resampleOp.filter(src, null);
+        ImageIO.write(rescaled, "png", new File(targetFileName));
+    }
+}

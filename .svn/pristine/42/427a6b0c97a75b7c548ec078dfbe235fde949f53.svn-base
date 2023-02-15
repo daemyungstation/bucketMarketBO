@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CategoryProductDisplay">
+    <!-- 관리자 > 전시관리 > 카테고리 상품진열관리 > 목록  -->
+    <select id="selectCategoryProductDisplayList" parameterType="HashMap" resultType="HashMap">
+        /* CategoryProductDisplay.selectCategoryProductDisplayList */
+        SELECT 
+            CPM.PRD_MST_NO,
+            CPM.PRD_MST_TYPE,
+            CPM.PRD_MST_NM,
+            TPM.PRD_MST_SPL_NM,
+            VPM.MODEL_NM,
+            CPM.PRD_MST_DPL_YN,
+            (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = CPM.PRD_MST_TYPE) AS PRD_MST_TYPE_NM
+        FROM T_PRD_CTG PC, T_PRD_MST TPM, C_PRD_MST CPM, V_PRD_MST VPM
+        WHERE PC.PRD_CTG_IDX = CPM.PRD_CTG_IDX
+            AND TPM.PRD_MST_CD = CPM.PRD_MST_CD
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND PC.PRD_CTG_USE_YN = 'Y'
+            AND PC.PRD_CTG_DSP_YN = 'Y'
+            AND CPM.PRD_MST_DEL_YN = 'N'
+            AND TPM.PRD_MST_APV_STATE = '${@common.code.Product@STATE_APPROVAL}'
+            AND CPM.PRD_CTG_IDX = #{PRD_CTG_IDX}
+        ORDER BY CPM.PRD_MST_SRT
+    </select>
+    <!-- 관리자 > 전시관리 > 카테고리 상품진열관리 > 수정  -->
+    <select id="updateCategoryProductDisplay" parameterType="HashMap">
+        /* CategoryProductDisplay.updateCategoryProductDisplay */
+        UPDATE C_PRD_MST SET
+            PRD_MST_SRT = #{PRD_MST_SRT},
+            PRD_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_MST_UPD_IP = #{PRD_MST_UPD_IP},
+            PRD_MST_UPD_ID = #{PRD_MST_UPD_ID}
+        WHERE PRD_MST_NO = #{PRD_MST_NO}
+    </select>
+    
+</mapper>

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="jdbcTypeForNull" value="NULL" />
+    </settings>
+    <mappers>
+        <!--
+        ##############################################################################
+        ################################## 01. MAIN ##################################
+        ##############################################################################
+        -->
+        <!-- DASHBOARD --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/main/DashboardMain_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 02. LOGIN ##################################
+        ##############################################################################
+        -->
+        <!-- LOGIN --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/manager/LoginManager_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 03. PRODUCT ################################
+        ##############################################################################
+        -->
+        <!-- 상품 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/product/BasicProduct_SQL.xml"/>        
+        <!-- 템플릿 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/product/ProductTemplate_SQL.xml"/>
+        <!-- 상품QnA -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/product/ProductQnA_SQL.xml"/>
+        <!-- 상품고시관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/product/ProductNotificationInfo_SQL.xml"/>
+        <!-- 상품이미지 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/product/ProductImage_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################ 04. SUPPORT  ################################
+        ##############################################################################
+        -->
+        <!-- 지원 혜택관리 --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/support/Support_SQL.xml"/>        
+        <!--
+        ##############################################################################
+        ################################# 05. DISPLAY ################################
+        ##############################################################################
+        -->
+        <!-- 전시 상품관리 --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/ProductDisplay_SQL.xml"/>
+        <!-- 전시 배너관리 --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/BannerDisplay_SQL.xml"/>
+        <!-- 카테고리 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/CategoryDisplay_SQL.xml"/>
+        <!-- 카테고리 상품진열 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/CategoryProductDisplay_SQL.xml"/>
+        <!-- 팝업 관리-->
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/PopupDisplay_SQL.xml"/>
+        <!-- 큐레이션 관리-->
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/CurationDisplay_SQL.xml"/>
+        <!-- 인기키워드 관리-->
+        <mapper resource="egovframework/sqlmap/mappers/bo/display/KeywordDisplay_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################ 06. MARKETING ###############################
+        ##############################################################################
+        -->
+        <!-- 기회전 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/marketing/Plan_SQL.xml"/>
+        <!-- 이벤트 관리 --> 
+        <mapper resource="egovframework/sqlmap/mappers/bo/marketing/Event_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 07. PLANNER ################################
+        ##############################################################################
+        -->
+        <!-- 플래너 공통 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/CommonPlanner_SQL.xml"/>
+        <!-- 활동 플래너 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/ActivePlanner_SQL.xml"/>
+        <!-- 신청 플래너 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/ApplyPlanner_SQL.xml"/>
+        <!-- 활동대기 플래너 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/InactivePlanner_SQL.xml"/>
+        <!-- 플래너 정산 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerCalculate_SQL.xml"/>
+        <!-- 커뮤니티 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerCommunity_SQL.xml"/>
+        <!-- 등급 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerGrade_SQL.xml"/>
+        <!-- 공지사항 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerNotice_SQL.xml"/>
+        <!-- 교육이수 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerQuiz_SQL.xml"/>
+        <!-- 랭킹조회 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerRanking_SQL.xml"/>
+        <!-- 현황조회 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerStatus_SQL.xml"/>
+        <!-- 플래너 지급 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/planner/PlannerPayment_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################## 08. ORDER #################################
+        ##############################################################################
+        -->
+        <!-- 가입/결제 조회 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/order/Order_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################## 09. claim #################################
+        ##############################################################################
+        -->
+        <!-- 해지 신청 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/claim/Cancellation_SQL.xml"/>
+        <!-- 라이프서비스 신청 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/claim/Life_SQL.xml"/>
+        <!-- 양도/양수 신청 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/claim/Transfer_SQL.xml"/>
+        <!-- 결제수단변경 신청 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/claim/PayMethod_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 10. BOARD ##################################
+        ##############################################################################
+        -->
+        <!-- 공지사항 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/NoticeBoard_SQL.xml"/>
+        <!-- 제휴사 공지사항 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/VendorNoticeBoard_SQL.xml" />
+        <!-- FAQ -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/FaqBoard_SQL.xml"/>
+        <!-- 1:1문의 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/InquiryBoard_SQL.xml"/>
+        <!-- 가입후기 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/CommentBoard_SQL.xml"/>
+        <!-- 제휴문의 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/board/ContactUsBoard_SQL.xml"/>
+        
+        <!--
+        ##############################################################################
+        ################################## 11. SITE ##################################
+        ##############################################################################
+        -->
+        <!-- 관리자 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/BasicManager_SQL.xml"/>
+        <!-- 권한 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/AuthManager_SQL.xml"/>
+        <!-- 메뉴 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/MenuManager_SQL.xml"/>
+        <!-- 제휴사 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/VendorManager_SQL.xml"/>
+        <!-- 공통코드 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/CommonCodeManager_SQL.xml"/>
+        <!-- 약관 관리 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/site/TermManager_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 12. STATS ##################################
+        ##############################################################################
+          -->
+        <!-- 개요 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/stats/StatsSummery_SQL.xml"/>
+        <!-- 가입분석 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/stats/StatsJoinAnalysis_SQL.xml"/>
+        <!-- 큐레이션 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/stats/StatsCurationAnalysis_SQL.xml"/>
+        <!-- 레디플래너 -->
+        <mapper resource="egovframework/sqlmap/mappers/bo/stats/StatsPlannerAnalysis_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 13. BATCH ##################################
+        ##############################################################################
+          -->
+        <!-- BATCH -->
+        <mapper resource="egovframework/sqlmap/mappers/dlcc/DlccMerge_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################ 14. INTERFACE ###############################
+        ##############################################################################
+        -->
+        <!-- SMS & 알림톡 -->
+        <mapper resource="egovframework/sqlmap/mappers/sms/Sms_SQL.xml"/>
+        <mapper resource="egovframework/sqlmap/mappers/message/Message_SQL.xml"/>
+        <!-- INICIS -->
+        <mapper resource="egovframework/sqlmap/mappers/pg/IniPay_SQL.xml"/>
+        <!-- DOSN 펌뱅킹 -->
+        <mapper resource="egovframework/sqlmap/mappers/dozn/banking/DoznBanking_SQL.xml"/>
+        <!--
+        ##############################################################################
+        ################################# 15. COMMON #################################
+        ##############################################################################
+        -->
+        <!-- COMMON -->  
+        <mapper resource="egovframework/sqlmap/mappers/bo/common/Common_SQL.xml"/>
+        <!-- COMMON FILE -->  
+        <mapper resource="egovframework/sqlmap/mappers/bo/common/CommonFile_SQL.xml"/>
+        <!-- COMMON POPUP -->  
+        <mapper resource="egovframework/sqlmap/mappers/bo/common/CommonPopup_SQL.xml"/>
+    </mappers>
+</configuration>

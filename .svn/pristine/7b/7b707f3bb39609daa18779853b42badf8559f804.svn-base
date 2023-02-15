@@ -1,0 +1,35 @@
+######################################################################
+############################## JNDI 설정법 ############################## 
+######################################################################
+
+1. tomcat > server.xml > GlobalNamingResources tag 하위에 Resouce tag 삽입
+<GlobalNamingResources>
+    <Resource auth="Container" 
+        driverClassName="oracle.jdbc.driver.OracleDriver"
+        maxActive="100"
+        maxIdle="30"
+        maxWait="10000"
+        name="jdbc/daemyung"
+        password="direct!2#"
+        type="javax.sql.DataSource"
+        url="jdbc:oracle:thin:@192.168.220.42:1521/DIRECT"
+        username="DIRECT"
+        validationInterval="30000"
+        validationQuery="SELECT 1 FROM DUAL"/>
+    <Resource auth="Container"
+        driverClassName="oracle.jdbc.driver.OracleDriver"
+        maxActive="100"
+        maxIdle="30"
+        maxWait="10000"
+        name="jdbc/daemyungdlcc"
+        password="direct!2#"
+        type="javax.sql.DataSource"
+        url="jdbc:oracle:thin:@192.168.220.66:1521/DLCCSUB"
+        username="DIRECT"
+        validationInterval="30000"
+        validationQuery="SELECT 1 FROM DUAL"/>
+</GlobalNamingResources>
+
+2. tomcat > context.xml > Context tag 하위에 ResourceLink tag 삽입
+<ResourceLink global="jdbc/daemyung" name="jdbc/daemyung" type="javax.sql.DataSource"/>
+<ResourceLink global="jdbc/daemyungdlcc" name="jdbc/daemyungdlcc" type="javax.sql.DataSource"/>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="LoginManager">
+
+    <!-- 관리자 정보 조회 -->
+    <select id="selectLoginManagerInfo" parameterType="common.model.Manager" resultType="common.model.Manager">
+        /* LoginManager.selectLoginManagerInfo */
+        SELECT
+            AM.ADM_MST_ID,
+            AM.ADM_MST_NM,
+            AM.ADM_MST_PWD,
+            AM.ADM_MST_HP1,
+            AM.ADM_MST_HP2,
+            AM.ADM_MST_HP3,
+            AM.ADM_MST_TEL1,
+            AM.ADM_MST_TEL2,
+            AM.ADM_MST_TEL3,
+            AM.ADM_MST_EMAIL_ID,
+            AM.ADM_MST_EMAIL_DOMAIN,
+            AM.ADM_MST_STATE,
+            AM.ADM_MST_SUB_IDX,
+            AUT.AUT_MST_IDX,
+            AUT.AUT_MST_VDR_YN,
+            ROUND(DBMS_RANDOM.VALUE(1000, 9999)) AS ADM_MST_RND,
+            (SELECT VDR_MST_AGR_DT FROM T_VDR_MST WHERE VDR_MST_IDX = ADM_MST_SUB_IDX ) AS VDR_MST_AGR_DT,
+            (SELECT VDR_MST_NM FROM T_VDR_MST WHERE VDR_MST_IDX = ADM_MST_SUB_IDX ) AS VDR_MST_NM,
+            (SELECT VDR_MST_LMT_YN FROM T_VDR_MST WHERE VDR_MST_IDX = ADM_MST_SUB_IDX ) AS VDR_MST_LMT_YN,
+            (SELECT VDR_MST_LMT_IP FROM T_VDR_MST WHERE VDR_MST_IDX = ADM_MST_SUB_IDX ) AS VDR_MST_LMT_IP            
+        FROM
+            T_ADM_MST AM, T_AUT_MST AUT
+        WHERE
+            ADM_MST_ID = #{ADM_MST_ID}
+            AND AM.AUT_MST_IDX = AUT.AUT_MST_IDX 
+    </select>
+    
+    <!-- 관리자 로그인 이력 등록 -->
+    <insert id="insertLoginManagerHistroy" parameterType="HashMap">
+        <selectKey keyProperty="ADM_MST_HISTORY_IDX" keyColumn="ADM_MST_HISTORY_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_ADM_MST_HISTORY_IDX.NEXTVAL FROM DUAL
+        </selectKey>
+        /* LoginManager.insertLoginManagerHistroy */
+        INSERT INTO T_ADM_MST_HISTORY (
+            ADM_MST_HISTORY_IDX,
+            ADM_ADM_MST_ID,
+            ADM_MST_RND,
+            ADM_MST_LOGIN_YN,
+            ADM_MST_RND_YN,
+            ADM_MST_RND_DT,
+            ADM_MST_REG_DT,
+            ADM_MST_REG_IP
+        ) VALUES (
+            #{ADM_MST_HISTORY_IDX},
+            #{ADM_MST_ID},
+            ROUND(DBMS_RANDOM.VALUE(1000, 9999)),
+            #{ADM_MST_LOGIN_YN},
+            #{ADM_MST_RND_YN},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{ADM_MST_REG_IP}
+        )
+    </insert>
+    
+    <!-- 관리자 로그인 이력 수정 -->
+    <update id="updateLoginManagerHistory" parameterType="HashMap">
+        /* LoginManager.updateLoginManagerHistory */
+        UPDATE T_ADM_MST_HISTORY SET
+            <if test="ADM_MST_RND_YN != null and ADM_MST_RND_YN.equals('N'.toString())">
+            ADM_MST_RND = ROUND(DBMS_RANDOM.VALUE(1000, 9999)),
+            ADM_MST_RND_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            </if>
+            ADM_MST_RND_YN = #{ADM_MST_RND_YN}
+        WHERE ADM_MST_HISTORY_IDX = #{ADM_MST_HISTORY_IDX}
+    </update>
+    
+    <!-- 관리자 로그인 이차 인증용 랜덤숫자 조회 -->
+    <select id="selectLoginHistoryRandomNumStr" parameterType="HashMap" resultType="String">
+        /* LoginManager.selectLoginHistoryRandomNumStr */
+        SELECT ADM_MST_RND
+        FROM T_ADM_MST_HISTORY
+        WHERE ADM_MST_HISTORY_IDX = #{ADM_MST_HISTORY_IDX}
+    </select>
+    
+    <!-- 관리자 로그인 이차 인증 유효성 체크 -->
+    <select id="selectLoginHistoryValieCount" parameterType="HashMap" resultType="Integer">
+        /* LoginManager.selectLoginHistoryValieCount */
+        <![CDATA[
+        SELECT COUNT(ADM_MST_HISTORY_IDX)
+        FROM T_ADM_MST_HISTORY
+        WHERE ADM_MST_HISTORY_IDX = #{ADM_MST_HISTORY_IDX}  
+            AND ADM_MST_RND = #{ADM_MST_RND}
+            AND ROUND(((SYSDATE - TO_DATE(ADM_MST_RND_DT, 'YYYYMMDDHH24MISS')) * 24 * 60)) < #{ACCREDIT_ALIVE_TIME}
+        ]]>
+    </select>
+    
+    <!-- 관리자(제휴업체)로그인 약관 동의일 수정 -->
+    <update id="updateLoginManagerVendorAgreeDate" parameterType="HashMap">
+        /* LoginManager.updateLoginManagerVendorAgreeDate */
+        UPDATE T_VDR_MST SET
+            VDR_MST_AGR_ID = #{VDR_MST_AGR_ID},
+            VDR_MST_AGR_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            VDR_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            VDR_MST_UPD_IP = #{VDR_MST_UPD_IP},
+            VDR_MST_UPD_ID = #{VDR_MST_UPD_ID}
+        WHERE VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+    </update>
+    
+    <!-- 관리자(제휴업체)전자계약동의 약관 정보 조회 -->
+    <resultMap id="resultLoginManagerVendorAgreeInfo" type="HashMap">
+        <result column="AGR_MST_IDX" property="AGR_MST_IDX" />
+        <result column="AGR_MST_TITLE" property="AGR_MST_TITLE" />
+        <result column="AGR_MST_CRT_DAY" property="AGR_MST_CRT_DAY" />
+        <result column="AGR_MST_CONTENTS" property="AGR_MST_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="AGR_MST_PRE_YN" property="AGR_MST_PRE_YN" />
+        <result column="AGR_MST_PRV_IDX" property="AGR_MST_PRV_IDX" />
+    </resultMap>
+    <select id="selectLoginManagerVendorAgreeInfo" parameterType="HashMap" resultMap="resultLoginManagerVendorAgreeInfo">
+        /* LoginManager.selectLoginManagerVendorAgreeInfo */
+        SELECT S1.*
+        FROM (
+            SELECT
+                AGR_MST_IDX,
+                AGR_MST_TITLE,
+                AGR_MST_CRT_DAY,
+                AGR_MST_CONTENTS,
+                AGR_MST_PRE_YN,
+                DECODE(AGR_MST_PRE_YN, 'Y', NVL(LEAD(AGR_MST_IDX) OVER (ORDER BY AGR_MST_CRT_DAY DESC), 0), 0) AS AGR_MST_PRV_IDX
+            FROM T_AGR_MST
+            WHERE AGR_MST_USE_YN = 'Y'
+                AND AGR_MST_TYPE = #{TERM_CONTRACT_VENDOR_CODE}
+                <if test="AGR_MST_IDX != null and AGR_MST_IDX != ''">
+                    AND AGR_MST_IDX = #{AGR_MST_IDX}
+                </if>
+            ORDER BY AGR_MST_CRT_DAY DESC
+        ) S1
+        WHERE ROWNUM = 1
+    </select>
+    
+</mapper>

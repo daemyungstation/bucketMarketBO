@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ProductTemplate">
+
+    <!-- 관리자 > 결합상품관리 > 상품 Template 조건절 -->
+    <sql id="productTemplateWhere">
+        WHERE PRD_TPL_TYPE = #{CMN_COM_IDX}
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND PRD_TPL_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchPrdTplNm != null and searchPrdTplNm != ''">
+            AND DBMS_LOB.INSTR(PRD_TPL_NM, #{searchPrdTplNm}) > 0
+        </if>            
+        <if test="searchPrdTplSvc != null and searchPrdTplSvc != ''">
+            AND PRD_TPL_SVC = #{searchPrdTplSvc}
+        </if>            
+        <if test="searchPrdTplYn != null and searchPrdTplYn !=''">
+            AND PRD_TPL_YN = #{searchPrdTplYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 Template 목록 개수 -->
+    <select id="selectProductTemplateListCount" parameterType="HashMap" resultType="Integer">
+        /* ProductTemplate.selectProductTemplateListCount */
+        SELECT COUNT(PRD_TPL_IDX)
+        FROM T_PRD_TPL
+        <include refid="productTemplateWhere"/>
+    </select>
+   
+   <!-- 관리자 > 결합상품관리 > 상품 Template 목록 -->
+    <select id="selectProductTemplateList" parameterType="HashMap" resultType="HashMap">
+        /* ProductTemplate.selectProductTemplateList */
+        SELECT
+            RNUM,
+            PRD_TPL_IDX,
+            (SELECT CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = PRD_TPL_TYPE) PRD_TPL_TYPE,
+            (SELECT CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = PRD_TPL_SVC) PRD_TPL_SVC,
+            PRD_TPL_BND_YN,
+            PRD_TPL_NM,
+            PRD_TPL_YN,
+            PRD_TPL_REG_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PRD_TPL_REG_ID) AS PRD_TPL_REG_NM,
+            PRD_TPL_REG_DT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    PRD_TPL_IDX,
+                    PRD_TPL_TYPE,
+                    PRD_TPL_SVC,
+                    PRD_TPL_BND_YN,
+                    PRD_TPL_NM,
+                    PRD_TPL_YN,
+                    PRD_TPL_REG_ID,
+                    PRD_TPL_REG_DT
+                FROM T_PRD_TPL
+                <include refid="productTemplateWhere"/>
+                ORDER BY PRD_TPL_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 Template 상세 -->
+    <resultMap id="resultTermManagerInfo" type="HashMap">
+        <result column="PRD_TPL_IDX" property="PRD_TPL_IDX" />
+        <result column="PRD_TPL_TYPE" property="PRD_TPL_TYPE" />
+        <result column="PRD_TPL_SVC" property="PRD_TPL_SVC" />
+        <result column="PRD_TPL_BND_YN" property="PRD_TPL_BND_YN" />
+        <result column="PRD_TPL_NM" property="PRD_TPL_NM" />
+        <result column="PRD_TPL_YN" property="PRD_TPL_YN" />
+        <result column="PRD_TPL_PC_DTL_DSC" property="PRD_TPL_PC_DTL_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="PRD_TPL_MB_DTL_DSC" property="PRD_TPL_MB_DTL_DSC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+    <select id="selectProductTemplateInfo" parameterType="HashMap" resultMap="resultTermManagerInfo">
+        /* ProductTemplate.selectProductTemplateInfo */
+        SELECT
+            PRD_TPL_IDX,
+            PRD_TPL_TYPE,
+            PRD_TPL_SVC,
+            PRD_TPL_BND_YN,
+            PRD_TPL_NM,
+            NVL(PRD_TPL_YN, 'N') AS PRD_TPL_YN,
+            PRD_TPL_PC_DTL_DSC,
+            PRD_TPL_MB_DTL_DSC
+        FROM T_PRD_TPL
+        WHERE PRD_TPL_IDX = #{PRD_TPL_IDX}
+    </select>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 Template 수정 -->
+    <update id="updateProductTemplate" parameterType="HashMap">
+        /* ProductTemplate.updateProductTemplate */
+        UPDATE T_PRD_TPL SET
+            PRD_TPL_TYPE = #{PRD_TPL_TYPE},
+            PRD_TPL_SVC = #{PRD_TPL_SVC},
+            <if test="PRD_TPL_BND_YN != null and PRD_TPL_BND_YN != ''">
+            PRD_TPL_BND_YN = #{PRD_TPL_BND_YN},
+            </if>
+            PRD_TPL_NM = #{PRD_TPL_NM},
+            PRD_TPL_YN = #{PRD_TPL_YN},
+            PRD_TPL_PC_DTL_DSC = #{PRD_TPL_PC_DTL_DSC:CLOB},
+            PRD_TPL_MB_DTL_DSC = #{PRD_TPL_MB_DTL_DSC:CLOB},           
+            PRD_TPL_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_TPL_UPD_ID = #{PRD_TPL_UPD_ID},
+            PRD_TPL_UPD_IP = #{PRD_TPL_UPD_IP}
+        WHERE PRD_TPL_IDX = #{PRD_TPL_IDX}
+    </update>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 Template 등록 -->
+    <insert id="insertProductTemplate" parameterType="HashMap">
+        <selectKey keyProperty="PRD_TPL_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_PRD_TPL_IDX.NEXTVAL AS PRD_TPL_IDX FROM DUAL
+        </selectKey> 
+        /* ProductTemplate.insertProductTemplate */
+        INSERT INTO T_PRD_TPL (
+            PRD_TPL_IDX,
+            PRD_TPL_TYPE,
+            PRD_TPL_SVC,
+            PRD_TPL_BND_YN,
+            PRD_TPL_NM,
+            PRD_TPL_YN,
+            PRD_TPL_PC_DTL_DSC,
+            PRD_TPL_MB_DTL_DSC,
+            PRD_TPL_REG_DT,
+            PRD_TPL_REG_IP,
+            PRD_TPL_REG_ID
+        ) VALUES (
+            #{PRD_TPL_IDX},
+            #{PRD_TPL_TYPE},
+            #{PRD_TPL_SVC},
+            NVL(#{PRD_TPL_BND_YN}, 'N'),
+            #{PRD_TPL_NM},
+            NVL(#{PRD_TPL_YN}, 'N'),
+            #{PRD_TPL_PC_DTL_DSC:CLOB},
+            #{PRD_TPL_MB_DTL_DSC:CLOB},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{PRD_TPL_REG_IP},
+            #{PRD_TPL_REG_ID}
+        )
+    </insert>
+</mapper>

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerQuiz">
+       
+    <!-- 관리자 > 레디플래너 > 교육이수 관리 조건절 -->
+    <sql id="plannerQuizWhere">
+        WHERE 1=1
+        <!-- 등록일 -->
+        <if test="searchStartDate != null and searchStartDate != ''">
+            AND RDP_EDU_REG_DT <![CDATA[>=]]> REPLACE(#{searchStartDate},'-', '') ||'000000'
+        </if>
+        <if test="searchEndDate != null and searchEndDate != ''">
+            AND RDP_EDU_REG_DT <![CDATA[<=]]> REPLACE(#{searchEndDate},'-', '') ||'235959'
+        </if>
+        <!-- 키워드 -->
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                RDP_EDU_NM LIKE '%' || #{searchKeyword} || '%'
+            )
+        </if>
+        <!-- 상태 -->
+        <if test="searchRdpEduYn != null and searchRdpEduYn != ''">
+            AND RDP_EDU_YN = #{searchRdpEduYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 목록 개수 -->
+    <select id="selectPlannerQuizListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerQuiz.selectPlannerQuizListCount */ 
+        SELECT COUNT(RDP_EDU_IDX) 
+        FROM T_RDP_EDU
+        <include refid="plannerQuizWhere" />
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 목록 -->
+    <select id="selectPlannerQuizList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerQuiz.selectPlannerQuizList */
+        SELECT
+        
+            RNUM,
+            
+            RDP_EDU_IDX,
+            RDP_EDU_NM,
+            RDP_EDU_YN,
+            RDP_EDU_REG_DT,
+            RDP_EDU_REG_ID,
+            
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = RDP_EDU_REG_ID) AS RDP_EDU_REG_NM
+            
+        FROM (
+            SELECT
+                ROWNUM AS RNUM,
+                S.*
+            FROM T_RDP_EDU S
+            <include refid="plannerQuizWhere"/>
+            ORDER BY RDP_EDU_IDX ASC
+        ) S1
+        <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            WHERE RNUM BETWEEN #{startNum} AND #{endNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 등록 -->
+    <insert id="insertPlannerQuizGroup" parameterType="HashMap">
+        <selectKey keyProperty="RDP_EDU_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_RDP_EDU_IDX.NEXTVAL AS RDP_EDU_IDX FROM DUAL
+        </selectKey> 
+        /* PlannerQuiz.insertPlannerQuizGroup */
+        INSERT INTO T_RDP_EDU (
+            RDP_EDU_IDX,
+            RDP_EDU_NM,
+            RDP_EDU_YN,
+            RDP_EDU_REG_DT,
+            RDP_EDU_REG_IP,
+            RDP_EDU_REG_ID
+        ) VALUES (
+            #{RDP_EDU_IDX},
+            #{RDP_EDU_NM},
+            #{RDP_EDU_YN},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RDP_EDU_REG_IP},
+            #{RDP_EDU_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 퀴즈 등록 -->
+    <insert id="insertPlannerQuiz" parameterType="HashMap">
+        <selectKey keyProperty="RDP_QUIZ_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_RDP_QUIZ_IDX.NEXTVAL AS RDP_QUIZ_IDX FROM DUAL
+        </selectKey> 
+        /* PlannerQuiz.insertPlannerQuiz */
+        INSERT INTO T_RDP_QUIZ (
+            RDP_QUIZ_IDX,
+            RDP_EDU_IDX,
+            RDP_QUIZ_NM,
+            RDP_QUIZ_SORT,
+            RDP_QUIZ_REG_DT,
+            RDP_QUIZ_REG_IP,
+            RDP_QUIZ_REG_ID
+        ) VALUES (
+            #{RDP_QUIZ_IDX},
+            #{RDP_EDU_IDX},
+            #{RDP_QUIZ_NM},
+            #{RDP_QUIZ_SORT},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RDP_QUIZ_REG_IP},
+            #{RDP_QUIZ_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 답변 등록 -->
+    <insert id="insertPlannerQuizItem" parameterType="HashMap">
+        <selectKey keyProperty="RDP_ITEM_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_RDP_ITEM_IDX.NEXTVAL AS RDP_ITEM_IDX FROM DUAL
+        </selectKey> 
+        /* PlannerQuiz.insertPlannerQuizItem */
+        INSERT INTO T_RDP_ITEM (
+            RDP_ITEM_IDX,
+            RDP_QUIZ_IDX,
+            RDP_ITEM_NM,
+            RDP_ITEM_YN,
+            RDP_ITEM_SORT,
+            RDP_ITEM_REG_DT,
+            RDP_ITEM_REG_IP,
+            RDP_ITEM_REG_ID
+        ) VALUES (
+            #{RDP_ITEM_IDX},
+            #{RDP_QUIZ_IDX},
+            #{RDP_ITEM_NM},
+            #{RDP_ITEM_YN},
+            #{RDP_ITEM_SORT},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RDP_ITEM_REG_IP},
+            #{RDP_ITEM_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 상세조회 -->
+    <resultMap id="resultPlannerQuiz" type="HashMap">
+        <result property="RDP_EDU_IDX" column="RDP_EDU_IDX"/> <!-- 교육관리 IDX -->
+        <result property="RDP_EDU_NM" column="RDP_EDU_NM"/> <!-- 그룹명 -->
+        <result property="RDP_EDU_YN" column="RDP_EDU_YN"/> <!-- 사용여부 -->
+        <result property="RDP_EDU_REG_DT" column="RDP_EDU_REG_DT"/> <!-- 최초_등록일 -->
+        <result property="RDP_EDU_REG_IP" column="RDP_EDU_REG_IP"/> <!-- 최초_등록_IP -->
+        <result property="RDP_EDU_REG_ID" column="RDP_EDU_REG_ID"/> <!-- 최초_등록자_아이디 -->
+        <result property="RDP_EDU_UPD_DT" column="RDP_EDU_UPD_DT"/> <!-- 최종_등록일 -->
+        <result property="RDP_EDU_UPD_IP" column="RDP_EDU_UPD_IP"/> <!-- 최종_등록_IP -->
+        <result property="RDP_EDU_UPD_ID" column="RDP_EDU_UPD_ID"/> <!-- 최종_등록자_아이디 -->
+        
+        <collection property="QUIZ" javaType="java.util.ArrayList" ofType="HashMap">
+            <id property="RDP_QUIZ_IDX" column="RDP_QUIZ_IDX"/> <!-- 퀴즈 IDX -->
+            <result property="RDP_EDU_IDX" column="RDP_EDU_IDX"/> <!-- 교육관리 IDX -->
+            <result property="RDP_QUIZ_NM" column="RDP_QUIZ_NM"/> <!-- 질문 -->
+            <result property="RDP_QUIZ_SORT" column="RDP_QUIZ_SORT"/> <!-- 노출순서 -->
+            <result property="RDP_QUIZ_REG_DT" column="RDP_QUIZ_REG_DT"/> <!-- 최초_등록일 -->
+            <result property="RDP_QUIZ_REG_IP" column="RDP_QUIZ_REG_IP"/> <!-- 최초_등록_IP -->
+            <result property="RDP_QUIZ_REG_ID" column="RDP_QUIZ_REG_ID"/> <!-- 최초_등록자_아이디 -->
+            <result property="RDP_QUIZ_UPD_DT" column="RDP_QUIZ_UPD_DT"/> <!-- 최종_등록일 -->
+            <result property="RDP_QUIZ_UPD_IP" column="RDP_QUIZ_UPD_IP"/> <!-- 최종_등록_IP -->
+            <result property="RDP_QUIZ_UPD_ID" column="RDP_QUIZ_UPD_ID"/> <!-- 최종_등록자_아이디 -->
+            
+            <collection property="ITEM" javaType="java.util.ArrayList" ofType="HashMap">
+                <id property="RDP_ITEM_IDX" column="RDP_ITEM_IDX"/> <!-- 퀴즈문항 IDX -->
+                <result property="RDP_QUIZ_IDX" column="RDP_QUIZ_IDX"/> <!-- 퀴즈 IDX -->
+                <result property="RDP_ITEM_NM" column="RDP_ITEM_NM"/> <!-- 선택문항 -->
+                <result property="RDP_ITEM_YN" column="RDP_ITEM_YN"/> <!-- 정답여부 -->
+                <result property="RDP_ITEM_SORT" column="RDP_ITEM_SORT"/> <!-- 노출순서 -->
+                <result property="RDP_ITEM_REG_DT" column="RDP_ITEM_REG_DT"/> <!-- 최초_등록일 -->
+                <result property="RDP_ITEM_REG_IP" column="RDP_ITEM_REG_IP"/> <!-- 최초_등록_IP -->
+                <result property="RDP_ITEM_REG_ID" column="RDP_ITEM_REG_ID"/> <!-- 최초_등록자_아이디 -->
+                <result property="RDP_ITEM_UPD_DT" column="RDP_ITEM_UPD_DT"/> <!-- 최종_등록일 -->
+                <result property="RDP_ITEM_UPD_IP" column="RDP_ITEM_UPD_IP"/> <!-- 최종_등록_IP -->
+                <result property="RDP_ITEM_UPD_ID" column="RDP_ITEM_UPD_ID"/> <!-- 최종_등록자_아이디 -->
+            </collection>
+        </collection>
+    </resultMap>
+    <select id="selectPlannerQuizInfo" parameterType="HashMap" resultMap="resultPlannerQuiz">
+        /* PlannerQuiz.selectPlannerQuizInfo */
+        SELECT 
+            * 
+        FROM 
+            T_RDP_EDU RE, 
+            T_RDP_QUIZ RQ, 
+            T_RDP_ITEM RI
+        WHERE 
+            RE.RDP_EDU_IDX = RQ.RDP_EDU_IDX 
+            AND RQ.RDP_QUIZ_IDX = RI.RDP_QUIZ_IDX
+            AND RE.RDP_EDU_IDX = ${RDP_EDU_IDX}
+        ORDER BY RDP_QUIZ_SORT ASC, RDP_ITEM_SORT ASC
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 하위 퀴즈 삭제 -->
+    <delete id="deletePlannerQuizItem" parameterType="HashMap">
+        /* PlannerQuiz.deletePlannerQuizItem */
+        DELETE FROM 
+            T_RDP_ITEM 
+        WHERE 
+            RDP_QUIZ_IDX IN ( 
+                SELECT RDP_QUIZ_IDX FROM T_RDP_QUIZ WHERE RDP_EDU_IDX = ${RDP_EDU_IDX}
+            )
+    </delete>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 하위 답변 삭제 -->
+    <delete id="deletePlannerQuiz" parameterType="HashMap">
+        /* PlannerQuiz.deletePlannerQuiz */
+        DELETE FROM 
+            T_RDP_QUIZ 
+        WHERE 
+            RDP_EDU_IDX = ${RDP_EDU_IDX}
+    </delete>
+    
+    <!-- 관리자 > 레디플래너 > 교육이수 > 퀴즈 그룹 수정 -->
+    <update id="updatePlannerQuizGroup" parameterType="HashMap">
+        /* PlannerQuiz.updatePlannerQuizGroup */
+        UPDATE T_RDP_EDU SET
+            RDP_EDU_NM = #{RDP_EDU_NM},
+            RDP_EDU_YN = #{RDP_EDU_YN},
+            RDP_EDU_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            RDP_EDU_UPD_IP = #{RDP_EDU_UPD_IP},
+            RDP_EDU_UPD_ID = #{RDP_EDU_UPD_ID}
+        WHERE 
+            RDP_EDU_IDX = ${RDP_EDU_IDX}
+    </update>
+    
+</mapper>

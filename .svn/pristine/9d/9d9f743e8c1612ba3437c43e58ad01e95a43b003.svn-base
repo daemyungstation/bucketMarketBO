@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Common">
+
+    <!-- 공통코드 하위 코드 조회 -->
+    <select id="selectCodeList" parameterType="String" resultType="HashMap">
+        /* Common.selectCodeList */
+        SELECT
+            CMN_COM_IDX,
+            CMN_COM_NM,
+            CMN_COM_LEVEL,
+            CMN_COM_UP_IDX,
+            CMN_COM_TOP_IDX,
+            CMN_COM_ETC1,
+            CMN_COM_ETC2,
+            CMN_COM_ETC3,
+            CMN_COM_SORT,
+            CMN_COM_USE_YN,
+            CMN_COM_REG_DT,
+            CMN_COM_REG_IP,
+            CMN_COM_REG_ID,
+            CMN_COM_UPD_DT,
+            CMN_COM_UPD_IP,
+            CMN_COM_UPD_ID 
+        FROM
+            T_CMM_COM
+        WHERE
+            CMN_COM_UP_IDX = #{CODE}
+            AND CMN_COM_USE_YN = 'Y'
+        ORDER BY CMN_COM_LEVEL, CMN_COM_SORT ASC
+    </select>
+    
+    <!-- 공통코드 하위 코드 조회 -->
+    <select id="selectTopCodeList" parameterType="String" resultType="HashMap">
+        /* Common.selectTopCodeList */
+        SELECT
+            CMN_COM_IDX,
+            CMN_COM_NM,
+            CMN_COM_LEVEL,
+            CMN_COM_UP_IDX,
+            CMN_COM_TOP_IDX,
+            CMN_COM_ETC1,
+            CMN_COM_ETC2,
+            CMN_COM_ETC3,
+            CMN_COM_SORT,
+            CMN_COM_USE_YN,
+            CMN_COM_REG_DT,
+            CMN_COM_REG_IP,
+            CMN_COM_REG_ID,
+            CMN_COM_UPD_DT,
+            CMN_COM_UPD_IP,
+            CMN_COM_UPD_ID 
+        FROM
+            T_CMM_COM 
+        WHERE
+            CMN_COM_TOP_IDX = #{CODE}
+            AND NOT CMN_COM_LEVEL = 1
+        START WITH CMN_COM_TOP_IDX = 0
+        CONNECT BY PRIOR CMN_COM_IDX = CMN_COM_UP_IDX
+        ORDER SIBLINGS BY CMN_COM_LEVEL, CMN_COM_SORT ASC 
+    </select>
+    
+    <!-- 공통코드 현재 미포함 하위 코드 조회 -->
+    <select id="selectHierarchyCodeList" parameterType="String" resultType="HashMap">
+        /* Common.selectHierarchyCodeList */
+        SELECT 
+            CMN_COM_IDX,
+            CMN_COM_NM,
+            CMN_COM_LEVEL,
+            CMN_COM_UP_IDX,
+            CONNECT_BY_ISLEAF AS CMN_COM_LEAF,
+            CMN_COM_TOP_IDX,
+            SUBSTR(SYS_CONNECT_BY_PATH(CMN_COM_NM, <![CDATA[' > ']]>), 4) AS CMN_COM_PATH,
+            CMN_COM_ETC1,
+            CMN_COM_ETC2,
+            CMN_COM_ETC3,
+            CMN_COM_SORT,
+            CMN_COM_USE_YN,
+            CMN_COM_REG_DT,
+            CMN_COM_REG_IP,
+            CMN_COM_REG_ID,
+            CMN_COM_UPD_DT,
+            CMN_COM_UPD_IP,
+            CMN_COM_UPD_ID
+        FROM 
+            T_CMM_COM
+        WHERE
+            CMN_COM_USE_YN = 'Y'
+        START WITH CMN_COM_UP_IDX = #{CODE}
+        CONNECT BY PRIOR CMN_COM_IDX = CMN_COM_UP_IDX
+        ORDER SIBLINGS BY CMN_COM_LEVEL, CMN_COM_SORT ASC
+    
+    </select>
+    
+      
+    <!-- 공통코드 조회 -->
+    <select id="selectCodeInfo" parameterType="HashMap" resultType="HashMap">
+        /* Common.selectCodeInfo */
+        SELECT
+            CMN_COM_IDX,
+            CMN_COM_NM,
+            CMN_COM_LEVEL,
+            CMN_COM_UP_IDX,
+            CMN_COM_TOP_IDX,
+            CMN_COM_ETC1,
+            CMN_COM_ETC2,
+            CMN_COM_ETC3,
+            CMN_COM_SORT,
+            CMN_COM_USE_YN,
+            CMN_COM_REG_DT,
+            CMN_COM_REG_IP,
+            CMN_COM_REG_ID,
+            CMN_COM_UPD_DT,
+            CMN_COM_UPD_IP,
+            CMN_COM_UPD_ID,
+            (
+                <![CDATA[
+                SELECT TO_CHAR(REPLACE(WM_CONCAT(CMN_COM_NM), ',', ' > ')) AS CMN_COM_PATH
+                FROM (
+                    SELECT CMN_COM_NM
+                    FROM T_CMM_COM S1
+                    WHERE CMN_COM_USE_YN = 'Y'
+                        AND CMN_COM_LEVEL > 1
+                    START WITH CMN_COM_IDX = #{CMN_COM_IDX}
+                    CONNECT BY PRIOR CMN_COM_UP_IDX = CMN_COM_IDX
+                    ORDER BY CMN_COM_LEVEL, CMN_COM_SORT
+                )
+                ]]>
+            ) AS CMN_COM_PATH
+        FROM
+            T_CMM_COM
+        WHERE
+            CMN_COM_IDX = #{CMN_COM_IDX}
+    </select>
+    
+    <!-- 담당자(매니저) 목록 조회 -->
+    <select id="selectCommonAuthManagerList" parameterType="HashMap" resultType="HashMap">
+        /* Common.selectCommonAuthManagerList */
+        SELECT ADM_MST_ID, ADM_MST_NM
+        FROM T_ADM_MST
+        WHERE AUT_MST_IDX = #{AUTH_MANAGER}
+            AND ADM_MST_STATE = 'Y'
+        ORDER BY ADM_MST_NM ASC
+    </select>
+    
+    <!-- 입점업체 목록 조회 -->
+    <select id="selectCommonVendorList" parameterType="HashMap" resultType="HashMap">
+        /* Common.selectCommonVendorList */
+        SELECT VDR_MST_IDX, VDR_MST_NM
+        FROM T_VDR_MST
+        <if test="searchListAll == null or searchListAll == ''">
+            WHERE VDR_MST_USE_YN = 'Y'
+        </if>
+        ORDER BY VDR_MST_NM ASC
+    </select>
+    
+    <!-- 상품 카테고리 목록 조회 -->
+    <select id="selectCommonProductCategoryList" parameterType="HashMap" resultType="HashMap">
+        /* Common.selectCommonProductCategoryList */
+        SELECT PRD_CTG_IDX, PRD_CTG_NM
+        FROM T_PRD_CTG
+        WHERE PRD_CTG_USE_YN = 'Y'
+            AND PRD_CTG_DSP_YN = 'Y'
+            <if test="PRD_CTG_UP_IDX == null or PRD_CTG_UP_IDX == ''">
+            AND PRD_CTG_LEVEL = 0
+            </if>
+            <if test="PRD_CTG_UP_IDX != null and PRD_CTG_UP_IDX != ''">
+            AND PRD_CTG_UP_IDX = #{PRD_CTG_UP_IDX}
+            </if>
+    </select>
+</mapper>

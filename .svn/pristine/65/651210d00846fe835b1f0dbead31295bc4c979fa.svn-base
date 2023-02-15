@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Event">
+
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 조건절 -->
+    <sql id="eventWhere">
+        <where>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND <![CDATA[(EVT_MST_ED_DT >= REPLACE(#{searchStartDate},'-', '') AND EVT_MST_ST_DT <= REPLACE(#{searchEndDate},'-', ''))]]>
+            </if>
+            <if test="searchEvtMstTitle != null and searchEvtMstTitle != ''">
+                AND EVT_MST_TITLE LIKE '%' || #{searchEvtMstTitle} || '%'
+            </if>
+            <if test="searchEvtMstPsnYn != null and searchEvtMstPsnYn != ''">
+                AND EVT_MST_PSN_YN = #{searchEvtMstPsnYn}
+            </if>
+            <if test="searchEvtMstUseYn != null and searchEvtMstUseYn != ''">
+                AND EVT_MST_USE_YN = #{searchEvtMstUseYn}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 목록 개수 -->
+    <select id="selectEventListCount" parameterType="HashMap" resultType="Integer">
+        /* Event.selectEventListCount */
+        SELECT
+            COUNT(EVT_MST_IDX)
+        FROM T_EVT_MST
+        <include refid="eventWhere"/>
+    </select>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 목록 -->
+    <select id="selectEventList" parameterType="HashMap" resultType="HashMap">
+        /* Event.selectEventList */
+        SELECT S2.*,
+            (SELECT COUNT(ER.EVT_RPL_IDX) FROM T_EVT_RPL ER WHERE ER.EVT_MST_IDX = S2.EVT_MST_IDX) AS EVT_RPL_CNT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    EVT_MST_IDX,
+                    EVT_MST_ST_DT,
+                    EVT_MST_ED_DT,
+                    EVT_MST_TITLE,
+                    EVT_MST_USE_YN,
+                    EVT_MST_PSN_YN,
+                    EVT_MST_REG_DT,
+                    EVT_MST_REG_IP,
+                    EVT_MST_REG_ID
+                FROM T_EVT_MST
+                <include refid="eventWhere"/>
+                ORDER BY EVT_MST_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 상세정보 -->
+    <resultMap id="resultEventInfo" type="HashMap">
+        <result column="EVT_MST_IDX" property="EVT_MST_IDX"/>
+        <result column="EVT_MST_ST_DT" property="EVT_MST_ST_DT"/>
+        <result column="EVT_MST_ST_HH" property="EVT_MST_ST_HH"/>
+        <result column="EVT_MST_ST_MI" property="EVT_MST_ST_MI"/>
+        <result column="EVT_MST_ED_DT" property="EVT_MST_ED_DT"/>
+        <result column="EVT_MST_ED_HH" property="EVT_MST_ED_HH"/>
+        <result column="EVT_MST_ED_MI" property="EVT_MST_ED_MI"/>
+        <result column="EVT_MST_TITLE" property="EVT_MST_TITLE"/>
+        <result column="EVT_MST_USE_YN" property="EVT_MST_USE_YN"/>
+        <result column="EVT_MST_RPL_YN" property="EVT_MST_RPL_YN"/>
+        <result column="EVT_MST_IMG_YN" property="EVT_MST_IMG_YN"/>
+        <result column="EVT_MST_PSN_YN" property="EVT_MST_PSN_YN"/>
+        <result column="EVT_MST_PC_MDA" property="EVT_MST_PC_MDA" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="EVT_MST_MB_MDA" property="EVT_MST_MB_MDA" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="EVT_MST_PC_DTL" property="EVT_MST_PC_DTL" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="EVT_MST_MB_DTL" property="EVT_MST_MB_DTL" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+    <select id="selectEventInfo" parameterType="HashMap" resultMap="resultEventInfo">
+        /* Event.selectEventInfo */
+        SELECT
+            EVT_MST_IDX,
+            EVT_MST_ST_DT,
+            EVT_MST_ST_HH,
+            EVT_MST_ST_MI,
+            EVT_MST_ED_DT,
+            EVT_MST_ED_HH,
+            EVT_MST_ED_MI,
+            EVT_MST_TITLE,
+            EVT_MST_USE_YN,
+            EVT_MST_RPL_YN,
+            EVT_MST_IMG_YN,
+            EVT_MST_PSN_YN,
+            EVT_MST_PC_MDA,
+            EVT_MST_MB_MDA,
+            EVT_MST_PC_DTL,
+            EVT_MST_MB_DTL
+        FROM T_EVT_MST
+        WHERE EVT_MST_IDX = #{EVT_MST_IDX}
+    </select>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 상세 > 이벤트 댓글 > 조건절 -->
+    <sql id="eventReplyWhere">
+        WHERE EVT_MST_IDX = #{EVT_MST_IDX}
+        <if test="searchEvtRplCts != null and searchEvtRplCts != ''">
+            AND EVT_RPL_CTS LIKE '%' || #{searchEvtRplCts} || '%'
+        </if>
+        <if test="searchEvtRplUseYn != null and searchEvtRplUseYn != ''">
+            AND EVT_RPL_USE_YN = #{searchEvtRplUseYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 상세 > 이벤트 댓글 > 목록 개수 -->
+    <select id="selectEventReplyListCount" parameterType="HashMap" resultType="Integer">
+        SELECT
+            COUNT(EVT_RPL_IDX)
+        FROM T_EVT_RPL
+        <include refid="eventReplyWhere"/>
+    </select>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 상세 > 이벤트 댓글 > 목록 -->
+    <select id="selectEventReplyList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            S2.*,
+            <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            (
+                SELECT
+                    CF.CMM_FLE_IDX
+                FROM T_CMM_FLE CF
+                WHERE CF.CMM_FLE_TB_NM = 'T_EVT_RPL'
+                    AND CF.CMM_FLE_TB_PK = S2.EVT_RPL_IDX
+                    AND CF.CMM_FLE_USE_YN = 'Y'
+            ) AS CMM_FLE_IDX,
+            </if>
+            EVT_RPL_HP1 || '-' ||EVT_RPL_HP2 || '-' ||EVT_RPL_HP3 AS EVT_RPL_HP
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    EVT_RPL_IDX,
+                    EVT_RPL_CTS,
+                    EVT_RPL_MKT_YN,
+                    EVT_RPL_PSN_YN,
+                    EVT_RPL_NM,
+                    EVT_RPL_HP1,
+                    EVT_RPL_HP2,
+                    EVT_RPL_HP3,
+                    EVT_RPL_USE_YN,
+                    EVT_RPL_REG_DT,
+                    EVT_RPL_REG_IP
+                FROM T_EVT_RPL
+                <include refid="eventReplyWhere"/>
+                ORDER BY EVT_RPL_REG_DT DESC
+            ) S1
+            <if test="startNum != null and startNum != ''">
+                WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+            </if>
+        ) S2
+        <if test="startNum != null and startNum != ''">
+            WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 등록 -->
+    <insert id="insertEvent" parameterType="HashMap">
+        <selectKey keyProperty="EVT_MST_IDX" keyColumn="EVT_MST_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_EVT_MST_IDX.NEXTVAL AS EVT_MST_IDX FROM DUAL
+        </selectKey>
+        /* Event.insertEvent */
+        INSERT INTO T_EVT_MST (
+            EVT_MST_IDX,
+            EVT_MST_ST_DT,
+            EVT_MST_ST_HH,
+            EVT_MST_ST_MI,
+            EVT_MST_ED_DT,
+            EVT_MST_ED_HH,
+            EVT_MST_ED_MI,
+            EVT_MST_TITLE,
+            EVT_MST_USE_YN,
+            EVT_MST_RPL_YN,
+            EVT_MST_IMG_YN,
+            EVT_MST_PSN_YN,
+            EVT_MST_PC_MDA,
+            EVT_MST_MB_MDA,
+            EVT_MST_PC_DTL,
+            EVT_MST_MB_DTL,
+            EVT_MST_REG_DT,
+            EVT_MST_REG_IP,
+            EVT_MST_REG_ID
+        ) VALUES (
+            #{EVT_MST_IDX},
+            REPLACE(#{EVT_MST_ST_DT}, '-', ''),
+            #{EVT_MST_ST_HH},
+            #{EVT_MST_ST_MI},
+            REPLACE(#{EVT_MST_ED_DT}, '-', ''),
+            #{EVT_MST_ED_HH},
+            #{EVT_MST_ED_MI},
+            #{EVT_MST_TITLE},
+            NVL(#{EVT_MST_USE_YN}, 'N'),
+            NVL(#{EVT_MST_RPL_YN}, 'N'),
+            NVL(#{EVT_MST_IMG_YN}, 'N'),
+            NVL(#{EVT_MST_PSN_YN}, 'N'),
+            #{EVT_MST_PC_MDA:CLOB},
+            #{EVT_MST_MB_MDA:CLOB},
+            #{EVT_MST_PC_DTL:CLOB},
+            #{EVT_MST_MB_DTL:CLOB},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{EVT_MST_REG_IP},
+            #{EVT_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 수정 -->
+    <update id="updateEvent" parameterType="HashMap">
+        UPDATE T_EVT_MST SET
+            EVT_MST_ST_DT = REPLACE(#{EVT_MST_ST_DT}, '-', ''),
+            EVT_MST_ST_HH = #{EVT_MST_ST_HH},
+            EVT_MST_ST_MI = #{EVT_MST_ST_MI},
+            EVT_MST_ED_DT = REPLACE(#{EVT_MST_ED_DT}, '-', ''),
+            EVT_MST_ED_HH = #{EVT_MST_ED_HH},
+            EVT_MST_ED_MI = #{EVT_MST_ED_MI},
+            EVT_MST_TITLE = #{EVT_MST_TITLE},
+            EVT_MST_USE_YN = NVL(#{EVT_MST_USE_YN}, 'N'),
+            EVT_MST_RPL_YN = NVL(#{EVT_MST_RPL_YN}, 'N'),
+            EVT_MST_IMG_YN = NVL(#{EVT_MST_IMG_YN}, 'N'),
+            EVT_MST_PSN_YN = NVL(#{EVT_MST_PSN_YN}, 'N'),
+            EVT_MST_PC_MDA = #{EVT_MST_PC_MDA:CLOB},
+            EVT_MST_MB_MDA = #{EVT_MST_MB_MDA:CLOB},
+            EVT_MST_PC_DTL = #{EVT_MST_PC_DTL:CLOB},
+            EVT_MST_MB_DTL = #{EVT_MST_MB_DTL:CLOB},
+            EVT_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            EVT_MST_UPD_IP = #{EVT_MST_UPD_IP},
+            EVT_MST_UPD_ID = #{EVT_MST_UPD_ID}
+        WHERE EVT_MST_IDX = #{EVT_MST_IDX}
+    </update>
+    
+    <!-- 관리자 > 프로모션 관리 > 이벤트 > 상세 > 이벤트 댓글 > 수정 -->
+    <update id="updateEventReply" parameterType="HashMap">
+        UPDATE T_EVT_RPL SET
+            EVT_RPL_USE_YN = #{EVT_RPL_USE_YN}
+        WHERE EVT_RPL_IDX = #{EVT_RPL_IDX}
+    </update>
+    
+</mapper>

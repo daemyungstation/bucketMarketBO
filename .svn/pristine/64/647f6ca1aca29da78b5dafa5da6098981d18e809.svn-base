@@ -1,0 +1,114 @@
+package web.bo.manager.service;
+
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.stereotype.Service;
+
+import common.model.Manager;
+
+/**
+ * @PackageName: web.bo.manager.service
+ * @FileName : LoginManagerService.java
+ * @Date : 2014. 3. 21.
+ * @프로그램 설명 : 관리자 로그인을 처리하는 Service Interface
+ * @author upleat
+ */
+@Service
+public interface LoginManagerService {
+
+    /**
+     * <pre>
+     * 1. MethodName : loginManagerProc
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 관리자 로그인을 처리한다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 3. 21.
+     * </pre>
+     *
+     * @param manager
+     * @param request
+     * @return
+     * @throws Exception
+     */
+    public Manager loginManagerProc(Manager manager, HttpServletRequest request, HttpServletResponse response) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : loginManagerAccredit
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 관리자 이차 로그인 인증을 처리한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 10.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Manager loginManagerAccredit(Map<String, Object> commandMap) throws Exception;
+    
+    
+    /**
+     * <pre>
+     * 1. MethodName : insertLoginManagerHistroy
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 관리자 로그인 기록을 남긴다. 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 3. 21.
+     * </pre>
+     * 
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertLoginManagerHistroy(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateLoginManagerHistory
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 관리자 이차 로그인 성공유무 수정 및 인증번호 재발송을 처리한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateLoginManagerHistory(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : updateLoginManagerVendorAgreeDate
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 제휴업체 약관동의일을 수정한다.
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 11.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateLoginManagerVendorAgreeDate(Map<String, Object> commandMap) throws Exception;
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectLoginManagerVendorAgreeInfo
+     * 2. ClassName  : LoginManagerService.java
+     * 3. Comment    : 관리자(제휴업체)전자계약동의 약관 정보 조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 19.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public Map<String, Object> selectLoginManagerVendorAgreeInfo(Map<String, Object> commandMap) throws Exception;
+
+}

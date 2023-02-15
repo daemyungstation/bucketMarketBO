@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ContactUsBoard">
+       
+    <!-- 관리자 > 고객센터 > 제휴문의 조건절 -->
+    <sql id="contactUsBoardWhere">
+        <where>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND CTT_US_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="searchCttUsTitleAndContents != null and searchCttUsTitleAndContents != ''">
+                AND DBMS_LOB.INSTR(CTT_US_TITLE || CTT_US_CONTENTS, #{searchCttUsTitleAndContents}) > 0
+            </if>
+            <if test="searchCttUsRepYn != null and searchCttUsRepYn != ''">
+                AND CTT_US_REP_YN = #{searchCttUsRepYn}
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 고객센터 > 제휴문의 목록 개수 -->
+    <select id="selectContactUsBoardListCount" parameterType="HashMap" resultType="Integer">
+        /* ContactUsBoard.selectContactUsBoardListCount */
+        SELECT COUNT(CTT_US_IDX)
+        FROM T_CTT_US
+        <include refid="contactUsBoardWhere"/>
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴문의 목록 -->
+    <select id="selectContactUsBoardList" parameterType="HashMap" resultType="HashMap">
+        /* ContactUsBoard.selectContactUsBoardList */
+        SELECT S2.*
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    CTT_US_IDX,
+                    CTT_US_CPN,
+                    CTT_US_CPN_DIV,
+                    CTT_US_NM,
+                    CTT_US_HP1,
+                    CTT_US_HP2,
+                    CTT_US_HP3,
+                    CTT_US_TITLE,
+                    CTT_US_REG_DT,
+                    CTT_US_REP_YN
+                FROM T_CTT_US
+                <include refid="contactUsBoardWhere"/>
+                ORDER BY CTT_US_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴문의 상세정보 -->
+    <select id="selectContactUsBoardInfo" parameterType="HashMap" resultType="HashMap">
+        /* ContactUsBoard.selectContactUsBoardInfo */
+        SELECT
+            CU.CTT_US_IDX,
+            CU.CTT_US_NM,
+            CU.CTT_US_HP1,
+            CU.CTT_US_HP2,
+            CU.CTT_US_HP3,
+            CU.CTT_US_CPN,
+            CU.CTT_US_CPN_DIV,
+            CU.CTT_US_REP_YN,
+            CU.CTT_US_TITLE,
+            CU.CTT_US_CONTENTS,
+            CF.CMM_FLE_IDX,
+            CF.CMM_FLE_ORG_NM,
+            CU.CTT_US_MEMEO,
+            CU.CTT_US_REG_DT,
+            CU.CTT_US_UPD_DT,
+            CU.CTT_US_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = CU.CTT_US_UPD_ID) AS CTT_US_UPD_NM
+        FROM T_CTT_US CU, T_CMM_FLE CF
+        WHERE CU.CTT_US_IDX = CF.CMM_FLE_TB_PK (+)
+            AND CF.CMM_FLE_TB_NM (+) = 'T_CTT_US'
+            AND CF.CMM_FLE_USE_YN (+) = 'Y'
+            AND CU.CTT_US_IDX = #{CTT_US_IDX}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 제휴문의 수정 -->
+    <update id="updateContactUsBoard" parameterType="HashMap">
+        /* ContactUsBoard.updateContactUsBoard */
+        UPDATE T_CTT_US SET
+            CTT_US_REP_YN = NVL(#{CTT_US_REP_YN}, 'N'),
+            CTT_US_MEMEO = #{CTT_US_MEMEO},
+            CTT_US_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            CTT_US_UPD_ID = #{CTT_US_UPD_ID},
+            CTT_US_UPD_IP = #{CTT_US_UPD_IP}
+        WHERE CTT_US_IDX = #{CTT_US_IDX}
+    </update>
+</mapper>

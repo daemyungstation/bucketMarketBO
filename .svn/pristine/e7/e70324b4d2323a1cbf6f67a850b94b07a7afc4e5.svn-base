@@ -1,0 +1,49 @@
+#################################################################################################################################
+#################################################################################################################################
+############################################################## DEV ##############################################################
+#################################################################################################################################
+#################################################################################################################################
+
+# \ud504\ub85c\uc81d\ud2b8 \uba85
+project.title=\ubc84\ud0b7\ub9c8\ucf13 DEV
+# \uc778\uc99d\uc644\ub8cc \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+administrator.main.page=/bo/main/dashboardMain.do
+# \ube44\uc778\uc99d \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+guest.main.page=/{0}/manager/login.do
+# \uc774\ucc28\uc778\uc99d \uc0ac\uc6a9\uc790 \uccab \ud398\uc774\uc9c0
+guest.accredit.page=/bo/manager/loginAccredit.do
+# \uc81c\ud734\uc5c5\uccb4 \uc57d\uad00\ub3d9\uc758 \ud398\uc774\uc9c0
+scm.term.agree.page=/bo/manager/loginTerm.do
+# \uc778\uc99d \uc720\ud6a8 \uc2dc\uac04
+accredit.alive.time=3
+
+# WAS
+server.domain=https://tbo.bucketmarket.co.kr
+front.domain=https://twww.bucketmarket.co.kr
+mobile.domain=https://tm.bucketmarket.co.kr
+# WEB
+js.domain=https://tbo.bucketmarket.co.kr
+css.domain=https://tbo.bucketmarket.co.kr
+img.domain=https://tbo.bucketmarket.co.kr
+# UPLOAD
+cdn.domain=/nas/cdn
+cdn.domain.editor=/nas/cdn/editor
+
+# WAS
+server.ssl.domain=https://tbo.bucketmarket.co.kr
+front.ssl.domain=https://tbo.bucketmarket.co.kr
+mobile.ssl.domain=https://tbo.bucketmarket.co.kr
+# WEB
+js.ssl.domain=https://tbo.bucketmarket.co.kr
+css.ssl.domain=https://tbo.bucketmarket.co.kr
+img.ssl.domain=https://tbo.bucketmarket.co.kr
+# UPLOAD
+doc.ssl.domain=/nas/doc
+cdn.ssl.domain=/nas/cdn
+cdn.ssl.domain.editor=/nas/cdn/editor
+
+# DAUM ZIPCODE
+daum.zipcode.api.url=https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js
+
+# Scheduler Exce Server IP
+scheduler.task.exce.server.ip=192.168.220.0

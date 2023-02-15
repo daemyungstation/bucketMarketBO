@@ -1,0 +1,357 @@
+package web.bo.product.controller;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.code.Product;
+import common.model.Manager.ROLE_MANAGER;
+import common.model.Paging;
+import common.session.SessionsManager;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.viewer.EXCEL;
+import common.viewer.JSON;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.servlet.ModelAndView;
+import web.bo.common.service.CommonService;
+import web.bo.product.service.ProductNotificationInfoService;
+import web.bo.product.service.ProductService;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @PackageName: web.bo.product.controller
+ * @FileName : ProductDisapprovalController.java
+ * @Date : 2020. 4. 20.
+ * @프로그램 설명 : 관리자 > 상품관리 > 미승인상품를 처리하는 Controller Class
+ * @author upleat
+ */
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class ProductDisapprovalController {
+
+    @Resource(name="productService")
+    private ProductService productService;
+
+    @Resource(name="commonService")
+    private CommonService commonService;
+    
+    @Resource(name = "productNotificationInfoService")
+    private ProductNotificationInfoService productNotificationInfoService;
+
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalList
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalList")
+    public ModelAndView productDisapprovalList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        String AUT_MST_IDX = SessionsManager.getSessionValue("AUT_MST_IDX");
+        commandMap.put("AUT_MST_IDX", AUT_MST_IDX);
+        if (!SessionsManager.isScm()) {
+            commandMap.put("searchListAll", "Y");
+            mv.addObject("vendorList", this.commonService.selectCommonVendorList(commandMap));
+        } else {
+            commandMap.put("searchAutMstIdx", SessionsManager.getSessionValue("AUT_MST_IDX"));
+            commandMap.put("searchVdrMstIdx", SessionsManager.getSessionValue("ADM_MST_SUB_IDX"));
+        }
+        // 미승인상품 목록 개수
+        commandMap.put("searchApvState", StringUtil.getString(commandMap, "searchApvState", Product.STATE_STOP));
+        commandMap.put("searchOrderBy", StringUtil.getString(commandMap, "searchOrderBy", Product.REG_SORT));
+        int totalCount = this.productService.selectBasicProductListCount(commandMap);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            // 미승인상품 목록
+            mv.addObject("list", this.productService.selectBasicProductList(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/product/productDisapprovalList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalExcelDownload
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */    
+    @RequestMapping(value="/bo/product/productDisapprovalExcelDownload")
+    public EXCEL productDisapprovalExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.productService.selectBasicProductList(commandMap);
+
+        if (list != null) {
+            excel.put("fileName", "daemyung_Disapproval_" + DateUtil.getCurrentDateTime());
+            for(Map<String, Object> row : list) {
+                String  VDR_MST_NM = StringUtil.getString(row, "VDR_MST_NM", "");
+                VDR_MST_NM.trim();
+                if (VDR_MST_NM.equals("")){
+                    VDR_MST_NM = Product.VDR_MST_DAEMYUNG_NM;
+                    row.put("VDR_MST_NM", VDR_MST_NM);
+                } else{
+                    VDR_MST_NM = VDR_MST_NM;
+                    row.put("VDR_MST_NM", VDR_MST_NM);
+                }
+            }
+            excel.put("list", list);
+            String [] headerTitle = {"NO",   "제휴업체",      "모델분류",       "지원혜택명",         "모델명",       "공급가",            "승인요청일",         "상태"};
+            String [] cellField = {"RNUM",   "VDR_MST_NM", "MODEL_CL_NM", "PRD_MST_SPL_NM", "PRD_MST_MD", "PRD_MST_SPL_PRC", "PRD_MST_REG_DT", "PRD_MST_APV_STATE_NM"};
+            String [] cellType =  {"Number", "String",     "String",      "String",         "String",     "Dollar",          "Date",           "String"};
+            String [] colSize = {"50", "80", "150", "150", "80", "50", "50", "50"};
+            excel.put("headerTitle", headerTitle);
+            excel.put("cellField", cellField);
+            excel.put("cellType", cellType);
+            excel.put("colSize", colSize);
+        }
+        return excel;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalViewPopup
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 거절사유보기
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalViewPopup")
+    public ModelAndView productDisapprovalViewPopup(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addObject("info", this.productService.selectProductRejectInfo(commandMap));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/product/productDisapprovalViewPopup");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalStateModify
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 승인등록 처리
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalStateModify")
+    public ModelAndView productDisapprovalStateModify(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        
+        int result = this.productService.updateProductApproval(commandMap);
+        // view Page Info
+        if (result > 0) {
+            mv.addObject("alertMsg", "수정 되었습니다.");
+            mv.addObject("returnUrl", serverDomain + "/bo/product/productDisapprovalList.do");
+        } else {
+            mv.addObject("alertMsg", "수정에 실패하였습니다.");
+            mv.addObject("returnUrl", serverDomain + "/bo/product/productDisapprovalList.do");
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("common/result");
+        return mv;
+    }    
+
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalForm
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품등록 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 08.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalForm")
+    public ModelAndView productDisapprovalForm(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addObject("commandMap", commandMap);
+        if(SessionsManager.isScm(request)){
+            String AUT_MST_IDX = SessionsManager.getSessionValue("AUT_MST_IDX");
+            String VDR_MST_NM = SessionsManager.getSessionValue("VDR_MST_NM");
+            commandMap.put("VDR_MST_NM", VDR_MST_NM);
+            commandMap.put("AUT_MST_IDX", AUT_MST_IDX);
+        }
+        // 상품고시정보
+        commandMap.put("PRD_NFI_LEVEL", "0");
+        commandMap.put("PRD_NFI_USE_YN", "Y");
+        List<Map<String, Object>> productNfiList = this.productNotificationInfoService.selectProductNotificationInfoList(commandMap);       
+        mv.addObject("productNfiList", productNfiList);
+        mv.setViewName("bo/product/productDisapprovalForm");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalNotificationInfoAjax
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품등록시 상품고시정보 호출
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 08.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value = "/bo/product/productDisapprovalNotificationInfoAjax")
+    public JSON productDisapprovalNotificationInfoAjax(HttpServletRequest request, @RequestParams() Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        List<Map<String, Object>> list = this.productNotificationInfoService.selectproductNotificationInfo(commandMap);
+        json.put("prdNfiList", list);
+        return json;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalRegist
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 08.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping("/bo/product/productDisapprovalRegist")
+    public ModelAndView productDisapprovalRegist(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 미승인상품 등록
+        if (this.productService.insertProductDisapproval((MultipartHttpServletRequest) request, commandMap) > 0) {
+            mv.addObject("alertMsg", "등록 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "등록에 실패하였습니다.");
+        }
+
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("returnUrl", serverDomain + "/bo/product/productDisapprovalList.do");
+        mv.setViewName("common/result");
+        return mv;
+    }    
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalEdit
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 15.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalEdit")
+    public ModelAndView productDisapprovalEdit(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addAllObjects(productService.selectBasicProductInfo(commandMap));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/product/productDisapprovalEdit");
+        return mv;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalModify
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 15.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalModify")
+    public ModelAndView productDisapprovalModify(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 미승인상품 등록
+        if (this.productService.updateProductDisapproval((MultipartHttpServletRequest) request, commandMap) > 0) {
+            mv.addObject("alertMsg", "등록 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "등록에 실패하였습니다.");
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("returnUrl", serverDomain + "/bo/product/productDisapprovalEdit.do");
+        mv.setViewName("common/result");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisapprovalRequestModify
+     * 2. ClassName  : ProductDisapprovalController.java
+     * 3. Comment    : 관리자 > 상품관리 > 미승인상품수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 5. 15.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/product/productDisapprovalRequestModify")
+    public ModelAndView productDisapprovalRequestModify(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        
+        if (this.productService.updateProductApprovalRequest(commandMap) > 0) {
+            mv.addObject("alertMsg", "요청이 완료 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "요청이 실패하였습니다.");
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.addObject("returnUrl", serverDomain + "/bo/product/productDisapprovalEdit.do");
+        mv.setViewName("common/result");
+        return mv;        
+    }    
+}

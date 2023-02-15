@@ -1,0 +1,540 @@
+$(function () {
+    // 숫자만 입력
+    $(document).on("keyup", ".number, .onlyNumber", function(event) {
+        if (!(event.keyCode >= 37 && event.keyCode <= 40)) {
+            var $this = $(this);
+            $this.val($this.val().replace(/[^0-9]/g, ''));
+        }
+    });
+    TagUtil.setEmptyColspan();
+    if ($("input.date").length > 0) {
+        $("input.date").each(function() {
+            // 일자 입력
+            new Cleave($(this), {
+                date: true,
+                delimiter: '-',
+                datePattern: ['Y', 'm', 'd']
+            });
+        });
+    }
+    // 툴팁
+    $('.contain-tooltip .icon-help').on('click',function(){
+        $('.contain-tooltip').removeClass('on')
+        $(this).parent().addClass('on')
+    });
+    $('html, body').on('click',function(e){
+        //console.log(e.target.className)
+        if(e.target.className != 'icon-help'){
+            $('.contain-tooltip').removeClass('on')
+        }
+    })
+});
+(function($) {
+    $.fn.serializeObject = function() {
+        "use strict";
+        var result = {};
+        var extend = function(i, element) {
+            var node = result[element.name]
+            if ("undefined" !== typeof node && node !== null) {
+                if ($.isArray(node)) {
+                    node.push(element.value)
+                } else {
+                    result[element.name] = [node, element.value]
+                }
+            } else {
+                result[element.name] = element.value
+            }
+        }
+        $.each(this.serializeArray(), extend)
+        return result
+    }
+    /**
+     * <pre>
+     * 1. FuntionName : setCsrfToken
+     * 2. ClassName  : jquery.common.js
+     * 3. Comment    : CSRF TOKEN SET
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 23.
+     * </pre>
+     */
+    $.fn.setCsrfToken = function () {
+        var csrf = $.common.csrf.get();
+        $(this).prepend(TagUtil.createDynamicInput("hidden", csrf.name, csrf.value));
+    }
+    /**
+     * <pre>
+     * 1. FuntionName : postSubmit
+     * 2. ClassName  : jquery.common.js
+     * 3. Comment    : POST SUBMIT 공통 함수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 23.
+     * </pre>
+     *
+     * @param action
+     * @param target
+     * @returns
+     */
+    $.fn.postSubmit = function (action, target) {
+        var $this = $(this);
+        if ($this.attr("enctype") == "multipart/form-data") {
+            var csrf = $.common.csrf.get();
+            action += "?" + csrf.name + "=" + csrf.value;
+        }
+        $this.setCsrfToken();
+        $this.attr({
+            "action" : action,
+            "target" : ((typeof(target) != "undefined") ? target : "_self"),
+            "method" : "POST"
+        }).submit();
+    }
+    /**
+     * <pre>
+     * 1. FuntionName : getSubmit
+     * 2. ClassName  : common.js
+     * 3. Comment    : GET SUBMIT 공통 함수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 23.
+     * </pre>
+     *
+     * @param action
+     * @param target
+     * @returns
+     */
+    $.fn.getSubmit = function (action, target) {
+        $(this).setCsrfToken();
+        $(this).attr({
+            "action" : action,
+            "target" : ((typeof(target) != "undefined") ? target : "_self"),
+            "method" : "GET"
+        }).submit();
+    }
+    /**
+     * <pre>
+     * 1. FuntionName : postPop
+     * 2. ClassName  : common.js
+     * 3. Comment    : WINDOW POPUP POST SUBMIT 공통 함수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 23.
+     * </pre>
+     *
+     * @param action
+     * @param target
+     * @param option
+     * @param callback
+     * @returns
+     */
+    $.fn.postPop = function(action, target, option, callback) {
+        if (typeof(callback) != "undefined") {
+            $.fn.extend(jQuery, callback);
+        }
+        if (option == "_blank") {
+            option = "";
+        } else {
+            option += ",scrollbars=no,resizeable=no,menubar=no,toolbar=no,location=no,directories=yes,fullscreen=no,status=no";
+        }
+        window.open("", target, option);
+        $(this).setCsrfToken();
+        $(this).attr({
+            "action" : action,
+            "target" : target,
+            "method" : "POST"
+        }).submit();
+    }
+    /**
+     * <pre>
+     * 1. FuntionName : getPop
+     * 2. ClassName  : common.js
+     * 3. Comment    : WINDOW POPUP GET SUBMIT 공통 함수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 23.
+     * </pre>
+     *
+     * @param action
+     * @param target
+     * @param option
+     * @param callback
+     * @returns
+     */
+    $.fn.getPop = function(action, target, option, callback) {
+        if (typeof(callback) != "undefined") {
+            $.fn.extend(jQuery, callback);
+        }
+        if (option == "_blank") {
+            option = "";
+        } else {
+            option += ",scrollbars=no,resizeable=no,menubar=no,toolbar=no,location=no,directories=yes,fullscreen=no,status=no";
+        }
+        window.open("", target, option);
+        $(this).setCsrfToken();
+        $(this).attr({
+            "action" : action,
+            "target" : target,
+            "method" : "GET"
+        }).submit();
+    }
+    $.fn.extend(jQuery, {
+        common : {
+            csrf : {
+                get : function () {
+                    var $head = $("head"),
+                        csrfName = $head.find("meta[name='_csrf_name']").attr("content"),
+                        csrfToken = $head.find("meta[name='_csrf_token']").attr("content"),
+                        csrfHeader = $head.find("meta[name='_csrf_header']").attr("content");
+                    return {name : csrfName, value : csrfToken, header : csrfHeader};
+                },
+                set : function (data) {
+                    var csrf = $.common.csrf.get(),
+                        name = csrf.name,
+                        value = csrf.value;
+                    if (data) {
+                        if (typeof(data) == "object") {
+                            if (TagUtil.getObjectClass(data) == "FormData") {
+                                data.append(name, value);
+                            } else {
+                                data[name] = value;
+                            }
+                        } else {
+                            if (data != "") {
+                                data += "&";
+                            }
+                            data += name + "=" + value;
+                        }
+                    } else {
+                        data = {};
+                        data[name] = value;
+                    }
+                    return data;
+                }
+            },
+            popup : {
+                callback : {
+                    vendor : {
+                        b2b : {
+                            search : null
+                        }
+                    },
+                    dlcc : {
+                        search : null
+                    },                    
+                    product : {
+                        search : null
+                    }
+                },
+                vender : {
+                    b2b : {
+                        /**
+                         * <pre>
+                         * 1. FuntionName : common.popup.vender.b2b.search
+                         * 2. ClassName  : common.js
+                         * 3. Comment    : B2B 회사 검색 공통 팝업
+                         * 4. 작성자       : upleat
+                         * 5. 작성일       : 2020. 3. 23.
+                         * </pre>
+                         *
+                         * @param CALLBACK
+                         */
+                        search : function (CALLBACK) {
+                            $.common.popup.callback.vendor.b2b.search = CALLBACK;
+                            TagUtil.createDynamicForm("dynamicNaviForm", "")
+                                .appendTo("body");
+                            $("#dynamicNaviForm").postPop($.action.common.popup("vendorB2BSearch"), "vendorB2BSearchPopup", "width=600,height=600,left=10,top=10");
+                            $("#dynamicNaviForm").remove();
+                        }
+                    },
+                    manager : {
+                        /**
+                         * <pre>
+                         * 1. FuntionName : common.popup.vender.manager.view
+                         * 2. ClassName  : common.js
+                         * 3. Comment    : 제휴업체 상세 공통 팝업
+                         * 4. 작성자       : upleat
+                         * 5. 작성일       : 2020. 3. 23.
+                         * </pre>
+                         *
+                         * @param key
+                         */
+                        view : function (key) {
+                            TagUtil.createDynamicForm("dynamicNaviForm", "")
+                                .append(TagUtil.createDynamicInput("hidden", "VDR_MST_IDX", key))
+                                .appendTo("body");
+                            $("#dynamicNaviForm").postPop($.action.edit("", "vendorManager", "site"), "vendorManagerView", "_blank");
+                            $("#dynamicNaviForm").remove();
+                        }
+                    }
+                },
+                dlcc : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.dlcc.search
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : dlcc 상품 검색 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     */
+                    search : function (CALLBACK) {
+                        $.common.popup.callback.dlcc.search = CALLBACK;
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("dlccSearch"), "dlccSearchPopup", "width=900,height=600,left=10,top=10");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                account : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.account.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 계약 상세 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param ORD_MST_IDX
+                     */
+                    detail : function (ORD_MST_IDX) {
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(TagUtil.createDynamicInput("hidden", "ORD_MST_IDX", ORD_MST_IDX))
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("accountView"), "accountViewPopup", "_blank");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                product : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.product.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 상품 상세 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param PRD_MST_NO
+                     */
+                    detail : function (PRD_MST_NO) {
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(TagUtil.createDynamicInput("hidden", "PRD_MST_NO", PRD_MST_NO))
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.product(), "productUnionEditPopup", "_blank");
+                        $("#dynamicNaviForm").remove();
+                    },
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.product.search
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 상품 검색 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     * @param MAX_COUNT
+                     * @param PRD_MST_NO
+                     */
+                    search : function (CALLBACK, MAX_COUNT, PRD_MST_NO) {
+                        $.common.popup.callback.product.search = CALLBACK;
+                        var params = new Array();
+                        params.push(TagUtil.createDynamicInput("hidden", "MAX_COUNT", MAX_COUNT));
+                        if (typeof(PRD_MST_NO) != "undefined") {
+                            params.push(TagUtil.createDynamicInput("hidden", "PRD_MST_NO", PRD_MST_NO));
+                        }
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(params)
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("basicProductSearch"), "basicProductSearchPopup", "width=1300,height=600,left=10,top=10");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                display : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.display.preview
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 이미지 미리보기 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     * @param MAX_COUNT
+                     */
+                    preview : function (CMM_FLE_IDX, TITLE) {
+                        var array = new Array();
+                        array.push(TagUtil.createDynamicInput("hidden", "CMM_FLE_IDX", CMM_FLE_IDX));
+                        array.push(TagUtil.createDynamicInput("hidden", "TITLE", TITLE));
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(array)
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("imagePreview"), "imagePreviewPopup", "width=800,height=600,left=10,top=10");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                planner : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.planner.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 레디플래너 상세 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 4. 7.
+                     * </pre>
+                     *
+                     * @param RDP_MST_NO
+                     */
+                    detail : function (RDP_MST_IDX) {
+                        var array = new Array();
+                        array.push(TagUtil.createDynamicInput("hidden", "RDP_MST_IDX", RDP_MST_IDX));
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(array)
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("planner"), "plannerPopup", "width=1300,height=800,left=10,top=10");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                order : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.order.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 주문 상세 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     */
+                    detail : function (ORD_MST_IDX) {
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(TagUtil.createDynamicInput("hidden", "ORD_MST_IDX", ORD_MST_IDX))
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("order"), "orderDetailPopup", "_blank");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                scm : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.scm.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 주문 상세 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     */
+                    detail : function (VDR_MST_IDX) {
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(TagUtil.createDynamicInput("hidden", "VDR_MST_IDX", VDR_MST_IDX))
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("scm"), "vendorManagerEdit", "_blank");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+                memo : {
+                    /**
+                     * <pre>
+                     * 1. FuntionName : common.popup.memo.detail
+                     * 2. ClassName  : common.js
+                     * 3. Comment    : 메모 상세 공통 팝업
+                     * 4. 작성자       : upleat
+                     * 5. 작성일       : 2020. 3. 23.
+                     * </pre>
+                     *
+                     * @param CALLBACK
+                     */
+                    detail : function (ORD_MST_IDX) {
+                        TagUtil.createDynamicForm("dynamicNaviForm", "")
+                            .append(TagUtil.createDynamicInput("hidden", "ORD_MST_IDX", ORD_MST_IDX))
+                            .appendTo("body");
+                        $("#dynamicNaviForm").postPop($.action.common.popup("memo"), "memoPopup", "width=1300,height=500,left=10,top=10");
+                        $("#dynamicNaviForm").remove();
+                    }
+                },
+            },
+            file : {
+                /**
+                 * <pre>
+                 * 1. FuntionName : common.file.download
+                 * 2. ClassName  : common.js
+                 * 3. Comment    : 파일 다운로드
+                 * 4. 작성자       : upleat
+                 * 5. 작성일       : 2020. 3. 23.
+                 * </pre>
+                 *
+                 * @param CMM_FLE_IDX
+                 * @returns
+                 */
+                download : function (CMM_FLE_IDX) {
+                    var csrf = $.common.csrf.get();
+                    var params = [
+                        TagUtil.createDynamicInput("hidden", csrf.name, csrf.value),
+                        TagUtil.createDynamicInput("hidden", "CMM_FLE_IDX", CMM_FLE_IDX)
+                    ];
+                    TagUtil.createDynamicForm("dynamicFileDownloadForm", $.action.common.file.download())
+                        .append(params)
+                        .appendTo("body")
+                        .submit();
+                    $("#dynamicFileDownloadForm").remove();
+                }
+            }
+        },
+        /**
+         * <pre>
+         * 1. FuntionName : checkBoxSelect
+         * 2. ClassName  : common.js
+         * 3. Comment    : checkbox 전체 선택/해제
+         * 4. 작성자       : upleat
+         * 5. 작성일       : 2020. 3. 23.
+         * </pre>
+         *
+         * @param allSelect 전체선택 클래스
+         * @param select 선택 클래스
+         * @returns
+         */
+        checkBoxSelect : function(allSelect, select) {
+            // 전체선택 이벤트 호출
+            $(document).on("click", "." + allSelect, function() {
+                checkBoxAllSelect(allSelect, select);
+            });
+
+            // 개별선택 이벤트 호출
+            $(document).on("click", "." + select, function() {
+                checkBoxUnitSelect(allSelect, select);
+            });
+
+            // 로딩
+            if ($("." + allSelect).is(":checked")) {
+                checkBoxAllSelect(allSelect, select);
+            } else {
+                checkBoxUnitSelect(allSelect, select);
+            }
+            
+            function checkBoxAllSelect(allSelect, select) {
+                var totalCount = $("." + select).length;
+                if (totalCount <= 0) {
+                    $("." + allSelect).prop("checked", false);
+                    return;
+                }
+                if ($("." + allSelect).is(":checked")) {
+                    $("." + select).prop("checked", true);
+                } else {
+                    $("." + select).prop("checked", false);
+                }
+            }
+            function checkBoxUnitSelect(allSelect, select) {
+                var checkdLength = $("." + select + ":checked").length;
+                var totalCount = $("." + select).length;
+                // 선택된 checkbox 확인
+                if (checkdLength > 0 && checkdLength == totalCount) {
+                    $("." + allSelect).prop("checked", true);
+                } else {
+                    $("." + allSelect).prop("checked", false);
+                }
+            }
+        }
+    });
+})(jQuery);

@@ -1,0 +1,452 @@
+package web.bo.product.service.impl;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import common.dao.CommonDefaultDAO;
+import common.session.SessionsManager;
+import common.util.IPUtil;
+import common.util.JSONUtil;
+import common.util.StringUtil;
+import lombok.extern.slf4j.Slf4j;
+import web.bo.common.service.CommonFileService;
+import web.bo.product.service.ProductImageService;
+import web.bo.product.service.ProductNotificationInfoService;
+import web.bo.product.service.ProductService;
+import web.message.service.impl.MessageServiceImpl;
+
+/**
+ * @PackageName: web.bo.product.service.impl
+ * @FileName : ProductServiceImpl.java
+ * @Date : 2020. 4. 20.
+ * @프로그램 설명 : 관리자 > 상품관리 > 미승인상품를 처리하는 Service Implement Class
+ * @author upleat
+ */
+
+@Slf4j
+@Service("productService")
+public class ProductServiceImpl implements ProductService {
+    
+    @Resource(name="defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+    
+    @Resource(name="productImageService")
+    private ProductImageService productImageService;    
+    
+    @Resource(name = "productNotificationInfoService")
+    private ProductNotificationInfoService productNotificationInfoService;        
+    
+    @Resource(name = "commonFileService")
+    private CommonFileService commonFileService;
+    
+    private static final String UPLOAD_PATH = "product";
+    private static final String UPLOAD_ALLOW = "video";
+    private static final String UPLOAD_DATE_FOLDER_FLAG = "Y";
+    
+    /**
+     * <pre>
+     * 1. MethodName : selectBasicProductListCount
+     * 2. ClassName  : ProductServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품 목록 개수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int selectBasicProductListCount(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectCount("BasicProduct.selectBasicProductListCount", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectBasicProductList
+     * 2. ClassName  : ProductServiceImpl.java
+     * 3. Comment    : 관리자 > 상품관리 > 상품 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 20.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> selectBasicProductList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("BasicProduct.selectBasicProductList", commandMap);
+    }
+
+    /**
+     * <pre>
+    * 1. MethodName : selectBasicProductInfo
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 미승인상품 상세 정보 
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectBasicProductInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        Map<String, Object> info = defaultDAO.select("BasicProduct.selectBasicProductInfo", commandMap);
+        returnMap.put("info", info);
+        commandMap.put("PRD_NFI_IDX", info.get("PRD_MST_NFI_IDX"));
+        List<Map<String, Object>> productNfiNmList = this.productNotificationInfoService.selectproductNotificationInfo(commandMap);
+        returnMap.put("productNfiNmList", productNfiNmList);
+        List<Map<String, Object>> productOption = defaultDAO.selectList("BasicProduct.selectBasicProductOption", commandMap);;
+        returnMap.put("productOption", productOption);        
+        commandMap.put("PRD_NFI_LEVEL", "0");
+        commandMap.put("PRD_NFI_USE_YN", "Y");
+        List<Map<String, Object>> productNfiList = this.productNotificationInfoService.selectProductNotificationInfoList(commandMap);       
+        returnMap.put("productNfiList", productNfiList);
+        returnMap.put("productImageInfo", productImageService.selectProductImageInfo(commandMap));
+        return returnMap;
+    }
+
+    /**
+     * <pre>
+    * 1. MethodName : updateProductDisapproval
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 미승인상품 등록
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductDisapproval(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_UPD_IP", IPUtil.getClientIP());
+        commandMap.put("PRD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        
+        if(!SessionsManager.isScm(request)){
+            commandMap.put("PRD_MST_APV_IP", IPUtil.getClientIP());
+            commandMap.put("PRD_MST_APV_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        } else {
+            commandMap.put("PRD_MST_APV_IP", "");
+            commandMap.put("PRD_MST_APV_ID", "");
+        }
+        
+        int result = 0; 
+        if ("Y".equals(StringUtil.getString(commandMap, "PRD_MST_OPT_YN", "N"))) {
+            result += defaultDAO.delete("BasicProduct.deleteProductOption", commandMap);
+            String [] PRD_OPT_DTL = StringUtil.getArray(commandMap, "PRD_OPT_DTL");
+            for (int i = 0; i < PRD_OPT_DTL.length; i++) {
+                commandMap.put("PRD_OPT_DTL", PRD_OPT_DTL[i]);
+                result += defaultDAO.insert("BasicProduct.insertProductOption", commandMap);
+            }                    
+        }
+        result += defaultDAO.update("BasicProduct.updateProductDisapproval", commandMap);
+        result += productImageService.updateProductImage((MultipartHttpServletRequest) request, commandMap);
+        return result;
+    }    
+    
+    /**
+     * <pre>
+    * 1. MethodName : insertProductDisapproval
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 미승인상품 등록
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertProductDisapproval(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_REG_IP", IPUtil.getClientIP());
+        commandMap.put("PRD_MST_REG_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        
+        if(SessionsManager.isScm(request)){
+            String ADM_MST_SUB_IDX = SessionsManager.getSessionValue("ADM_MST_SUB_IDX");
+            commandMap.put("VDR_MST_IDX", ADM_MST_SUB_IDX);
+        }
+        
+        String PRD_MST_CD = defaultDAO.selectStr("BasicProduct.selectProductCd", commandMap);
+        commandMap.put("PRD_MST_CD", PRD_MST_CD);
+        int result = 0; 
+        if ("Y".equals(StringUtil.getString(commandMap, "PRD_MST_OPT_YN", "N"))) {
+            String [] PRD_OPT_DTL = StringUtil.getArray(commandMap, "PRD_OPT_DTL");
+            for (int i = 0; i < PRD_OPT_DTL.length; i++) {
+                commandMap.put("PRD_OPT_DTL", PRD_OPT_DTL[i]);
+                result += defaultDAO.insert("BasicProduct.insertProductOption", commandMap);
+            }                    
+        }
+        result += defaultDAO.insert("BasicProduct.insertProductDisapproval", commandMap);
+        result += productImageService.insertProductImage((MultipartHttpServletRequest) request, commandMap);
+        return result;
+    }
+    
+    /**
+     * <pre>
+    * 1. MethodName : selectProductRejectInfo
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 거절사유보기
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectProductRejectInfo(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.select("BasicProduct.selectProductRejectInfo", commandMap);
+    }
+    
+    /**
+     * <pre>
+    * 1. MethodName : updateProductApproval
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 승인등록
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductApproval(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_APV_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("PRD_MST_APV_IP", IPUtil.getClientIP());
+        int result = 0;
+        
+        String [] PRD_MST_CD_APV = StringUtil.getArray(commandMap, "PRD_MST_CD_APV");
+        String [] PRD_MST_APV_STATE = StringUtil.getArray(commandMap, "PRD_MST_APV_STATE");
+        for (int i = 0; i < PRD_MST_CD_APV.length; i++) {
+            commandMap.put("PRD_MST_CD", PRD_MST_CD_APV[i]);
+            commandMap.put("PRD_MST_APV_STATE", PRD_MST_APV_STATE[i]);
+            result += defaultDAO.update("BasicProduct.updateProductApproval", commandMap);
+        }
+        return result;
+    }
+    
+    /**
+     * <pre>
+    * 1. MethodName : productCompleteEdit
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 재승인 요청
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductApprovalRequest(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("PRD_MST_UPD_IP", IPUtil.getClientIP());
+        
+        return defaultDAO.update("BasicProduct.updateProductApprovalRequest", commandMap);
+    }
+    
+    public int mergeProductApprovalUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "C_PRD_MST");
+        result += commonFileService.updateCommonFileList(request, commandMap, UPLOAD_PATH, UPLOAD_ALLOW, UPLOAD_DATE_FOLDER_FLAG);
+        
+        return result;
+    }
+    
+    /**
+     * <pre>
+    * 1. MethodName : insertProductUnion
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 결합상품등록
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int insertProductUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_REG_IP", IPUtil.getClientIP());
+        commandMap.put("PRD_MST_REG_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        commandMap.put("PRD_MST_UPD_IP", IPUtil.getClientIP());
+        commandMap.put("PRD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));        
+        
+        String PRD_MST_NO = defaultDAO.selectStr("BasicProduct.selectProductNo", commandMap);
+        commandMap.put("PRD_MST_NO", PRD_MST_NO);
+        int result = 0; 
+        
+        if ("Y".equals(StringUtil.getString(commandMap, "ZERO_YN", "N"))) {
+            result += defaultDAO.update("BasicProduct.updateDlccProductMaster", commandMap);
+        }
+        
+        if (StringUtil.getArray(commandMap, "PRD_MST_MAIN_CTRT").length > 0) {
+            String [] PRD_MST_MAIN_CTRT = StringUtil.getArray(commandMap, "PRD_MST_MAIN_CTRT");
+            commandMap.put("PRD_MST_MAIN_CTRT", String.join(",", PRD_MST_MAIN_CTRT));
+        }
+        if (StringUtil.getArray(commandMap, "PRD_MST_DSP_SVC").length > 0) {
+            String [] PRD_MST_DSP_SVC = StringUtil.getArray(commandMap, "PRD_MST_DSP_SVC");
+            commandMap.put("PRD_MST_DSP_SVC", String.join(",", PRD_MST_DSP_SVC));
+        } 
+        if (StringUtil.getArray(commandMap, "PRD_MST_ISTM_MTH").length > 0) {
+            String [] PRD_MST_ISTM_MTH = StringUtil.getArray(commandMap, "PRD_MST_ISTM_MTH");
+            commandMap.put("PRD_MST_ISTM_MTH", String.join(":", PRD_MST_ISTM_MTH));
+        }
+        result += defaultDAO.insert("BasicProduct.insertProductUnion", commandMap);
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "C_PRD_MST");
+        result += commonFileService.insertCommonFileList(request, commandMap, UPLOAD_PATH, UPLOAD_ALLOW, UPLOAD_DATE_FOLDER_FLAG);
+        result += defaultDAO.update("BasicProduct.updateProductUnionEdit", commandMap);
+        result += productImageService.updateProductImage((MultipartHttpServletRequest) request, commandMap);
+        
+        String [] PRD_MST_NOs = StringUtil.getArray(commandMap, "PRD_RLT_MST_NO");
+        for (int y = 0; y < PRD_MST_NOs.length; y++) {
+            commandMap.put("PRD_RLT_MST_NO", PRD_MST_NOs[y]);
+            result += defaultDAO.insert("BasicProduct.insertRelatedProduct", commandMap);
+        }
+        return result;
+    }
+    
+    /**
+     * <pre>
+    * 1. MethodName : selectUnionProductInfo
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 결합상품 서비스 상세정보 
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> selectUnionProductInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<>();
+        Map<String, Object> union = defaultDAO.select("BasicProduct.selectUnionProductInfo", commandMap);
+        returnMap.put("union", union);
+        commandMap.put("PRD_MST_CD", union.get("PRD_MST_CD"));
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "C_PRD_MST");
+        returnMap.put("fileList", commonFileService.selectCommonFileList(commandMap));
+        List<Map<String, Object>> relatedProduct = defaultDAO.selectList("BasicProduct.selectRelatedProduct", commandMap);;
+        returnMap.put("relatedProduct", relatedProduct);        
+        return returnMap;
+    }   
+    
+    /**
+     * <pre>
+    * 1. MethodName : updateProductUnion
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 결합상품등록
+    * 4. 작성자       : upleat
+    * 5. 작성일       : 2020. 4. 28.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductUnion(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        commandMap.put("PRD_MST_UPD_IP", IPUtil.getClientIP());
+        commandMap.put("PRD_MST_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));        
+        
+        int result = 0; 
+        if (StringUtil.getArray(commandMap, "PRD_MST_DSP_SVC").length > 0) {
+            String [] PRD_MST_DSP_SVC = StringUtil.getArray(commandMap, "PRD_MST_DSP_SVC");
+            commandMap.put("PRD_MST_DSP_SVC", String.join(",", PRD_MST_DSP_SVC));
+        }
+        
+        if (StringUtil.getArray(commandMap, "PRD_MST_MAIN_CTRT").length > 0) {
+            String [] PRD_MST_MAIN_CTRT = StringUtil.getArray(commandMap, "PRD_MST_MAIN_CTRT");
+            commandMap.put("PRD_MST_MAIN_CTRT", String.join(",", PRD_MST_MAIN_CTRT));
+        }
+
+        result += defaultDAO.update("BasicProduct.updateProductUnion", commandMap);
+        
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "C_PRD_MST");
+        result += commonFileService.updateCommonFileList(request, commandMap, UPLOAD_PATH, UPLOAD_ALLOW, UPLOAD_DATE_FOLDER_FLAG);
+        result += defaultDAO.update("BasicProduct.updateProductUnionEdit", commandMap);
+        result += productImageService.updateProductImage((MultipartHttpServletRequest) request, commandMap);
+        
+        result += defaultDAO.delete("BasicProduct.deleteRelatedProduct", commandMap);
+        String [] PRD_MST_NOs = StringUtil.getArray(commandMap, "PRD_RLT_MST_NO");
+        for (int y = 0; y < PRD_MST_NOs.length; y++) {
+            commandMap.put("PRD_RLT_MST_NO", PRD_MST_NOs[y]);
+            result += defaultDAO.insert("BasicProduct.insertRelatedProduct", commandMap);
+        }
+        return result;
+    } 
+    
+    /**
+     * <pre>
+    * 1. MethodName : updateProductOption
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 옵션수정
+    * 4. 작성자       : inus
+    * 5. 작성일       : 2020. 8. 12.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductOption(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        
+        String PARAMS = StringUtil.getString(commandMap, "PARAMS", "");
+        List<Map<String, Object>> paramList = JSONUtil.convJSONArrayToListMap(JSONUtil.convStringToJSONArray(PARAMS));
+        for (Map<String, Object> param : paramList) {
+            Map<String, Object> dataMap =  new HashMap<>();
+            dataMap.put("PRD_OPT_IDX", StringUtil.getString(param, "PRD_OPT_IDX", ""));
+            dataMap.put("PRD_OPT_DTL", StringUtil.getString(param, "PRD_OPT_DTL", ""));
+            dataMap.put("PRD_MST_CD", StringUtil.getString(param, "PRD_MST_CD", ""));
+            if(!"".equals(dataMap.get("PRD_OPT_IDX"))) {
+                result += defaultDAO.update("BasicProduct.updateProductOption", dataMap);
+            }else {
+                result += defaultDAO.insert("BasicProduct.insertProductOption", dataMap);
+            }
+        }
+        return result;
+    }   
+    
+    /**
+     * <pre>
+    * 1. MethodName : updateProductSuggest
+    * 2. ClassName  : ProductServiceImpl.java
+    * 3. Comment    : 관리자 > 상품관리 > 결합상품 추천 순서 수정
+     * 4. 작성자       : inus
+     * 5. 작성일       : 2021. 5. 4.
+     * </pre>
+     *
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    public int updateProductSuggest(Map<String, Object> commandMap) throws Exception {
+        int result = 0;
+        
+        Map<String, Object> dataMap =  new HashMap<>();
+        dataMap.put("PRD_MST_NO", StringUtil.getString(commandMap, "PRD_MST_NO", ""));
+        dataMap.put("PRD_MST_SUGGEST", StringUtil.getString(commandMap, "PRD_MST_SUGGEST", ""));
+        
+        result += defaultDAO.update("BasicProduct.updateProductSuggest", dataMap);
+
+        return result;
+    }   
+}

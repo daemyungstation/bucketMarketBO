@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+						http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+	
+	<task:scheduler id="scheduler" pool-size="10"/>
+	
+	<bean id="batchManagerTaskService" class="web.batch.service.impl.BatchManagerServiceImpl" />
+    
+    <task:scheduled-tasks scheduler="scheduler">
+        
+        <!-- 
+        01. B2B업체정보 (매일 00:10)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob01" cron="0 10 0 * * *" />
+        
+        <!-- 
+        02. 상품정보 (매일 00:20)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob02" cron="0 20 0 * * *" />
+        
+        <!-- 
+        04. 가입정보 (매일 00:40)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob04" cron="0 40 0 * * *" />
+        
+        <!-- 
+        05-1. 상세정산정보 (매일 04:00)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob05De1" cron="0 0 4 * * *" />
+        
+        <!-- 
+        06. 해약환급금 (매일 01:00)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob06" cron="0 0 1 * * *" />
+        
+        <!-- 
+        09. 레디플래너 주문별정산정보 (매월 1일 02:30)
+        --> 
+        <task:scheduled  ref="batchManagerTaskService" method="doJob09" cron="0 30 2 1 * *" />
+        
+        <!-- 
+        10. 레디플래너 정산기초정보 (매일 03:00)
+        -->
+        <task:scheduled  ref="batchManagerTaskService" method="doJob10" cron="0 0 3 * * *" />
+        
+        <!-- 
+        11. 레디플레너 지원혜택 지급요청 알람 (매월 1일 09:00)
+        
+        <task:scheduled  ref="batchManagerTaskService" method="doJob11" cron="0 0 9 1 * *" />
+        -->
+    </task:scheduled-tasks>
+	
+</beans>
+
+<!-- 
+
+DLCC 
+
+DR_V_B2B_MST / 01. 업체정보
+DR_V_PRD_MST / 02. 상품정보
+
+TB_DR_I_ORD_MST / 03. 상품가입_MEMBER_REG
+TB_DR_I_ORD_DTL / 03. 상품가입_ORDER_REG
+
+DR_V_ORD_MST / 04. 가입정보
+DR_V_ORD_DTL / 05. 상세납입정보
+
+TB_DR_I_ORD_DPS / 05-1. 상세정산정보
+
+DR_V_ORD_CNL / 06. 해약환급금 정보
+
+TB_DR_I_RMT_ORD / 09. 레디플래너 정산정보
+
+DR_V_RMT_BASIC / 10. 레디플레너 기초정산 정보
+
+-->

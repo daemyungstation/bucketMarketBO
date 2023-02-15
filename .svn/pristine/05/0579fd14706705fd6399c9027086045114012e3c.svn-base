@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="StatsSummery">
+    <!-- 통계 조건절  -->
+    <sql id="statsSummeryWhere">
+        <if test="searchAgent != null and searchAgent != ''">
+            AND OM.ORD_MST_AGT = #{searchAgent}
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('Y')">
+            AND OD.RDP_MST_IDX IS NOT NULL
+        </if>
+        <if test="searchRdpYn != null and searchRdpYn.equals('N')">
+            AND OD.RDP_MST_IDX IS NULL
+        </if>
+        <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+            AND DBMS_LOB.INSTR(PM.PRD_MST_NM, #{searchPrdMstNm}) > 0
+        </if>
+        <if test="searchProdCd != null and searchProdCd != ''">
+            AND PM.PROD_CD  LIKE '%' || UPPER(#{searchProdCd}) || '%'
+        </if>
+        <if test="searchPrdCtgIdx != null and searchPrdCtgIdx != ''">
+            AND PM.PRD_CTG_IDX = #{searchPrdCtgIdx}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 통계 > 개요 > 실적 비중  -->
+    <select id="selectStatsSummaryRatioInfo" parameterType="HashMap" resultType="HashMap">
+        /* StatsSummery.selectStatsSummaryRatioInfo */
+        SELECT
+            CASE WHEN TOT_R > 0 THEN TRUNC((CNT_R / TOT_R) * 100, 1) ELSE 0 END AS CNT_R,
+            CASE WHEN TOT_R > 0 THEN TRUNC((RDP_R / TOT_R) * 100, 1) ELSE 0 END AS RDP_R,
+            TOT_R,
+            CASE WHEN TOT_W > 0 THEN TRUNC((CNT_W / TOT_W) * 100, 1) ELSE 0 END AS CNT_W,
+            CASE WHEN TOT_W > 0 THEN TRUNC((RDP_W / TOT_W) * 100, 1) ELSE 0 END AS RDP_W,
+            TOT_W,
+            CASE WHEN TOT_J > 0 THEN TRUNC((CNT_J / TOT_J) * 100, 1) ELSE 0 END AS CNT_J,
+            CASE WHEN TOT_J > 0 THEN TRUNC((RDP_J / TOT_J) * 100, 1) ELSE 0 END AS RDP_J,
+            TOT_J,
+            CASE WHEN TOT_C > 0 THEN TRUNC((CNT_C / TOT_C) * 100, 1) ELSE 0 END AS CNT_C,
+            CASE WHEN TOT_C > 0 THEN TRUNC((RDP_C / TOT_C) * 100, 1) ELSE 0 END AS RDP_C,
+            TOT_C
+        FROM (
+            SELECT 
+                MAX(DECODE(TYPE, 'R', CST, 0)) AS CNT_R,
+                MAX(DECODE(TYPE, 'R', RDP, 0)) AS RDP_R,
+                MAX(DECODE(TYPE, 'R', CST, 0)) + MAX(DECODE(TYPE, 'R', RDP, 0)) AS TOT_R,
+                MAX(DECODE(TYPE, 'W', CST, 0)) AS CNT_W,
+                MAX(DECODE(TYPE, 'W', RDP, 0)) AS RDP_W,
+                MAX(DECODE(TYPE, 'W', CST, 0)) + MAX(DECODE(TYPE, 'W', RDP, 0)) AS TOT_W,
+                MAX(DECODE(TYPE, 'J', CST, 0)) AS CNT_J,
+                MAX(DECODE(TYPE, 'J', RDP, 0)) AS RDP_J,
+                MAX(DECODE(TYPE, 'J', CST, 0)) + MAX(DECODE(TYPE, 'J', RDP, 0)) AS TOT_J,
+                MAX(DECODE(TYPE, 'C', CST, 0)) AS CNT_C,
+                MAX(DECODE(TYPE, 'C', RDP, 0)) AS RDP_C,
+                MAX(DECODE(TYPE, 'C', CST, 0)) + MAX(DECODE(TYPE, 'C', RDP, 0)) AS TOT_C
+            FROM (
+                SELECT 
+                    SUM (DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST,
+                    SUM (DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP,
+                    'R' AS TYPE
+                FROM (  
+                    SELECT 
+                        COUNT(OM.ORD_MST_IDX) AS CNT,
+                        OD.RDP_MST_IDX
+                    FROM T_ORD_MST OM, T_ORD_DLCC OD
+                    WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsSummeryWhere"/>
+                        GROUP BY RDP_MST_IDX
+                )
+                UNION
+                SELECT 
+                    SUM (DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST,
+                    SUM (DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP,
+                    'W' AS TYPE
+                FROM (
+                    SELECT 
+                        COUNT(VOM.ORD_MST_IDX) AS CNT,
+                        OD.RDP_MST_IDX
+                    FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                    WHERE VOM.REG_DM IS NOT NULL
+                        AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                        <include refid="statsSummeryWhere"/>
+                    GROUP BY RDP_MST_IDX
+                )
+                UNION
+                SELECT 
+                    SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST,
+                    SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP,
+                    'J' AS TYPE
+                FROM (
+                    SELECT 
+                        COUNT(VOM.ORD_MST_IDX) AS CNT,
+                        OD.RDP_MST_IDX
+                    FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                    WHERE JOIN_DT IS NOT NULL 
+                        AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                        AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsSummeryWhere"/>
+                    GROUP BY RDP_MST_IDX
+                )
+                UNION
+                SELECT
+                    SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST,
+                    SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP,
+                    'C' AS TYPE
+                FROM (
+                    SELECT 
+                        COUNT(VOM.ORD_MST_IDX) AS CNT,
+                        OD.RDP_MST_IDX
+                    FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                    WHERE RESN_PROC_DAY IS NOT NULL 
+                        AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                        AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                        AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                        <include refid="statsSummeryWhere"/>
+                    GROUP BY RDP_MST_IDX
+                )
+            )
+        )
+    </select>
+   
+    <!-- 관리자 > 통계 > 개요 > 실적 정보 -->
+    <select id="selectStatsSummaryRecordList" parameterType="HashMap" resultType="HashMap">
+        /* StatsSummery.selectStatsSummaryRecordList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY, CST_R, RDP_R, CST_W, RDP_W, CST_J, RDP_J, CST_C,RDP_C
+        FROM (
+            SELECT
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(DAY, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(DAY, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(DAY, 1, 4) AS DAY,
+                </if>
+                NVL(SUM(CST_R), 0) AS CST_R,
+                NVL(SUM(RDP_R), 0) AS RDP_R,
+                NVL(SUM(CST_W), 0) AS CST_W,
+                NVL(SUM(RDP_W), 0) AS RDP_W,
+                NVL(SUM(CST_J), 0) AS CST_J,
+                NVL(SUM(RDP_J), 0) AS RDP_J,
+                NVL(SUM(CST_C), 0) AS CST_C,
+                NVL(SUM(RDP_C), 0) AS RDP_C
+            FROM 
+                (
+                    SELECT TO_CHAR( TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) + LEVEL-1, 'YYYYMMDD' ) AS DAY FROM DUAL
+                    CONNECT BY LEVEL <![CDATA[<=]]> ( TO_DATE( REPLACE(#{searchEndDate},'-', ''), 'YYYYMMDD' ) - TO_DATE( REPLACE(#{searchStartDate},'-', ''), 'YYYYMMDD' ) +1 )
+                ) D,
+                (
+                    SELECT ORD_DT,
+                        SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST_R,
+                        SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP_R
+                    FROM (
+                        SELECT 
+                            COUNT(OM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(ORD_MST_ORD_DT, 0, 8) AS ORD_DT,
+                            OD.RDP_MST_IDX
+                        FROM T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+                            AND OM.ORD_MST_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsSummeryWhere"/>
+                        GROUP BY  SUBSTR(ORD_MST_ORD_DT,0,8), RDP_MST_IDX
+                    )
+                    GROUP BY ORD_DT
+                ) R,
+                (
+                    SELECT ORD_DT,
+                        SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST_W,
+                        SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP_W
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            SUBSTR(VOM.REG_DM, 0, 8) AS ORD_DT,
+                            OD.RDP_MST_IDX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE VOM.REG_DM IS NOT NULL
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND VOM.REG_DM BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+                            <include refid="statsSummeryWhere"/>
+                        GROUP BY  SUBSTR(VOM.REG_DM,0,8), RDP_MST_IDX
+                    )
+                    GROUP BY ORD_DT
+                ) W,
+                (
+                    SELECT ORD_DT,
+                        SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST_J,
+                        SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP_J
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            JOIN_DT AS ORD_DT,
+                            OD.RDP_MST_IDX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE JOIN_DT IS NOT NULL 
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND JOIN_DT BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsSummeryWhere"/>
+                        GROUP BY  JOIN_DT, RDP_MST_IDX
+                    )
+                    GROUP BY ORD_DT
+                ) J,
+                (
+                    SELECT ORD_DT,
+                        SUM(DECODE(RDP_MST_IDX, NULL, CNT, 0)) AS CST_C,
+                        SUM(DECODE(RDP_MST_IDX, NULL, 0, CNT)) AS RDP_C
+                    FROM (
+                        SELECT 
+                            COUNT(VOM.ORD_MST_IDX) AS CNT,
+                            RESN_PROC_DAY AS ORD_DT,
+                            OD.RDP_MST_IDX
+                        FROM V_ORD_MST VOM, T_ORD_MST OM, T_ORD_DLCC OD
+                        WHERE RESN_PROC_DAY IS NOT NULL 
+                            AND VOM.ORD_MST_IDX = OM.ORD_MST_IDX
+                            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX 
+                            AND RESN_PROC_DAY BETWEEN REPLACE(#{searchStartDate},'-', '') AND REPLACE(#{searchEndDate},'-', '')
+                            <include refid="statsSummeryWhere"/>
+                        GROUP BY  RESN_PROC_DAY , RDP_MST_IDX
+                    )
+                    GROUP BY ORD_DT
+                ) C
+            WHERE D.DAY = R.ORD_DT(+)
+                AND D.DAY = W.ORD_DT(+)
+                AND D.DAY = J.ORD_DT(+)
+                AND D.DAY = C.ORD_DT(+)
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(DAY)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 6))
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(DAY, 1, 4))
+            </if>
+        )
+        ORDER BY DAY NULLS LAST
+    </select>
+</mapper>

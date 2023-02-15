@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerCommunity">
+       
+    <!-- 관리자 > 레디플래너 > 커뮤니티 관리 조건절 -->
+    <sql id="plannerCommunityWhere">
+        WHERE 1=1
+        <!-- 등록일 -->
+        <if test="searchStartDate != null and searchStartDate != ''">
+            AND RDP_BBS_REG_DT <![CDATA[>=]]> REPLACE(#{searchStartDate},'-', '') ||'000000'
+        </if>
+        <if test="searchEndDate != null and searchEndDate != ''">
+            AND RDP_BBS_REG_DT <![CDATA[<=]]> REPLACE(#{searchEndDate},'-', '') ||'235959'
+        </if>
+        <!-- 이름 -->
+        <if test="searchRdpMstMemNm != null and searchRdpMstMemNm != ''">
+            AND RDP_MST_MEM_NM LIKE '%' || #{searchRdpMstMemNm} || '%'
+        </if>
+        <!-- 아이디 -->
+        <if test="searchRdpMstId != null and searchRdpMstId != ''">
+            AND RDP_MST_ID LIKE '%' || #{searchRdpMstId} || '%'
+        </if>
+        <!-- 연락처 -->
+        <if test="searchRdpMstHp3 != null and searchRdpMstHp3 != ''">
+            AND RDP_MST_HP3 LIKE '%' || #{searchRdpMstHp3} || '%'
+        </if>
+        <!-- 키워드 -->
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                RDP_BBS_TITLE LIKE '%' || #{searchKeyword} || '%' OR RDP_BBS_CONTENTS LIKE '%' || #{searchKeyword} || '%'
+            )
+        </if>
+        <!-- 소속 -->
+        <if test="searchRdpMstDmYn != null and searchRdpMstDmYn != ''">
+            AND RDP_MST_DM_YN = #{searchRdpMstDmYn}
+        </if>
+        <!-- 사번 -->
+        <if test="searchRdpMstDmNo != null and searchRdpMstDmNo != ''">
+            AND RDP_MST_DM_NO LIKE '%' || #{searchRdpMstDmNo} || '%'
+        </if>
+        <!-- 상태 -->
+        <if test="searchRdpBbsUseYn != null and searchRdpBbsUseYn != ''">
+            AND RDP_BBS_USE_YN = #{searchRdpBbsUseYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 커뮤니티 목록 개수 -->
+    <select id="selectCommunityListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerCommunity.selectCommunityListCount */ 
+        SELECT COUNT(RDP_BBS_IDX) 
+        FROM T_RDP_BBS S JOIN T_RDP_MST M ON M.RDP_MST_ID = S.RDP_BBS_REG_ID
+        <include refid="plannerCommunityWhere" />
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 커뮤니티 목록 -->
+    <select id="selectCommunityList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerCommunity.selectCommunityList */
+        SELECT
+        
+            RNUM,
+            
+            RDP_BBS_IDX,
+            RDP_BBS_TITLE,
+            RDP_BBS_READ_CNT,
+            RDP_BBS_USE_YN,
+            RDP_BBS_REG_DT,
+            
+            RDP_MST_MEM_NM,
+            RDP_MST_IDX,
+            RDP_MST_NO,
+            RDP_MST_ID
+            
+        FROM (
+            SELECT
+                ROWNUM AS RNUM,
+                S.*,
+                M.*
+            FROM 
+                T_RDP_BBS S 
+                JOIN T_RDP_MST M ON M.RDP_MST_ID = S.RDP_BBS_REG_ID
+            <include refid="plannerCommunityWhere"/>
+            ORDER BY RDP_BBS_REG_DT DESC
+        ) S1
+        <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            WHERE RNUM BETWEEN #{startNum} AND #{endNum}
+        </if>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 커뮤니티 조회수 증가 -->
+    <update id="updateReadCount" parameterType="HashMap">
+        /* PlannerCommunity.updateReadCount */
+        UPDATE T_RDP_BBS SET
+            RDP_BBS_READ_CNT = (SELECT RDP_BBS_READ_CNT + 1 FROM T_RDP_BBS WHERE RDP_BBS_IDX = #{RDP_BBS_IDX})
+        WHERE 
+            RDP_BBS_IDX = #{RDP_BBS_IDX}
+    </update>
+    
+    <!-- 관리자 > 레디플래너 > 커뮤니티 상세 -->
+    <resultMap id="resultCommunityInfo" type="HashMap">
+        <result property="RDP_BBS_IDX" column="RDP_BBS_IDX"/> <!-- 레디플래너 게시판 IDX -->
+        <result property="RDP_BBS_TITLE" column="RDP_BBS_TITLE"/> <!-- 제목 -->
+        <result property="RDP_BBS_CONTENTS" column="RDP_BBS_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/> <!-- 내용 -->
+        <result property="RDP_BBS_YTB_URL" column="RDP_BBS_YTB_URL"/> <!-- 유튜브링크 -->
+        <result property="RDP_BBS_READ_CNT" column="RDP_BBS_READ_CNT"/> <!-- 조회수 -->
+        <result property="RDP_BBS_USE_YN" column="RDP_BBS_USE_YN"/> <!-- 사용여부 -->
+        <result property="RDP_BBS_REG_DT" column="RDP_BBS_REG_DT"/> <!-- 최초_등록일 -->
+        <result property="RDP_BBS_REG_IP" column="RDP_BBS_REG_IP"/> <!-- 최초_등록_IP -->
+        <result property="RDP_BBS_REG_ID" column="RDP_BBS_REG_ID"/> <!-- 최초_등록자_아이디 -->
+        <result property="RDP_BBS_UPD_DT" column="RDP_BBS_UPD_DT"/> <!-- 최종_수정일 -->
+        <result property="RDP_BBS_UPD_IP" column="RDP_BBS_UPD_IP"/> <!-- 최종_수정_IP -->
+        <result property="RDP_BBS_UPD_ID" column="RDP_BBS_UPD_ID"/> <!-- 최종_수정자_아이디 -->
+
+        <result property="RDP_BBS_REG_NM" column="RDP_BBS_REG_NM"/> <!-- 최초_등록자_이름 -->
+        <result property="RDP_BBS_UPD_NM" column="RDP_BBS_UPD_NM"/> <!-- 최종_수정자_이름 -->
+        
+    </resultMap>
+    <select id="selectCommunityInfo" parameterType="HashMap" resultMap="resultCommunityInfo">
+        /* PlannerCommunity.selectCommunityInfo */
+        SELECT
+            S.*,
+            (SELECT RDP_MST_MEM_NM FROM T_RDP_MST WHERE RDP_MST_ID = RDP_BBS_REG_ID) AS RDP_BBS_REG_NM,
+            (SELECT RDP_MST_MEM_NM FROM T_RDP_MST WHERE RDP_MST_ID = RDP_BBS_UPD_ID) AS RDP_BBS_UPD_NM
+        FROM 
+            T_RDP_BBS S
+        WHERE
+            RDP_BBS_IDX = #{RDP_BBS_IDX}
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 커뮤니티 수정 -->
+    <update id="updateCommunity" parameterType="HashMap">
+        /* PlannerCommunity.updateCommunity */
+        UPDATE T_RDP_BBS SET
+            RDP_BBS_USE_YN = NVL(#{RDP_BBS_USE_YN}, 'N')
+        WHERE 
+            RDP_BBS_IDX = #{RDP_BBS_IDX}
+    </update>
+    
+</mapper>

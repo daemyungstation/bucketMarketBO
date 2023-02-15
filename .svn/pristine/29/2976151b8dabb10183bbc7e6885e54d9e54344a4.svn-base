@@ -1,0 +1,320 @@
+package common.configuration;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import web.message.model.MessageTemplate;
+
+@Configuration
+public class MessageTemplateConfiguration {
+
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+
+    @Value("#{resource['front.domain']}")
+    private String pcDomain;
+
+    @Value("#{resource['mobile.domain']}")
+    private String mobileDomain;
+
+    // 상품Q&A 답변안내
+    @Bean(name = "BM001")
+    public MessageTemplate BM001() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 상품Q&A 답변안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 상품Q&A에 대한 답변이 등록되었습니다.\n");
+        msg.append("\n");
+        msg.append("이용해 주셔서 감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/product/basicProductView.do?PRD_MST_NO=%2$s";
+        String pcLinkUrl = this.pcDomain + "/fr/product/basicProductView.do?PRD_MST_NO=%2$s";
+        alim.addWebLinkButton("상품Q&A 답변확인", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 1:1문의하기 답변안내
+    @Bean(name = "BM002")
+    public MessageTemplate BM002() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 1:1문의 답변안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 1:1문의에 대한 답변이 등록되었습니다.\n");
+        msg.append("\n");
+        msg.append("이용해 주셔서 감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/board/inquiryBoardForm.do?loginYn=Y";
+        String pcLinkUrl = this.pcDomain + "/fr/board/inquiryBoardForm.do?loginYn=Y";
+        alim.addWebLinkButton("1:1문의 답변확인", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 레디플래너 신청승인 완료
+    @Bean(name = "BM004")
+    public MessageTemplate BM004() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 레디플래너 신청승인 완료");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 신청승인이 완료되었습니다.\n");
+        msg.append("\n");
+        msg.append("■플래너번호 : %2$s\n");
+        msg.append("\n");
+        msg.append("안내드린 플래너번호로 임시 로그인 후,\n");
+        msg.append("추가정보 등록 및 교육이수를 통해 활동하실 수 있습니다.\n");
+        msg.append("\n");
+        msg.append("보다 많은 활동으로 리워드 수익을 가져가세요.\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/planner/plannerLoginForm.do";
+        String pcLinkUrl = this.pcDomain + "/fr/planner/plannerLoginForm.do";
+        alim.addWebLinkButton("레디플래너 로그인", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 레디플래너 신청승인 반려
+    @Bean(name = "BM005")
+    public MessageTemplate BM005() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 레디플래너 안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 신청이 반려되었습니다.\n");
+        msg.append("\n");
+        msg.append("■플래너번호 : %2$s\n");
+        msg.append("■반려사유 : %3$s\n");
+        msg.append("\n");
+        msg.append("안내드린 플래너번호로 임시 로그인 후,\n");
+        msg.append("다시 한 번 정확한 정보 입력 후 신청해 주시기 바랍니다.\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/planner/plannerLoginForm.do";
+        String pcLinkUrl = this.pcDomain + "/fr/planner/plannerLoginForm.do";
+        alim.addWebLinkButton("레디플래너 로그인", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 레디플래너 이용제한
+    @Bean(name = "BM006")
+    public MessageTemplate BM006() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 레디플래너 안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 활동이 정지되었습니다.\n");
+        msg.append("\n");
+        msg.append("■이용정지일 : %2$tY-%2$tm-%2$td %2$tH:%2$tM:%2$tS\n");
+        msg.append("■정지사유 : %3$s\n");
+        msg.append("\n");
+        msg.append("정지사유를 확인해 주세요.\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/myplanner/myplannerMainView.do";
+        String pcLinkUrl = this.pcDomain + "/fr/myplanner/myplannerCampaignProductList.do";
+        alim.addWebLinkButton("MY레디플래너", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 레디플래너 이용제한 해제
+    @Bean(name = "BM007")
+    public MessageTemplate BM007() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 레디플래너 안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 이용제한이 해제되어 정상적인 활동이 가능합니다.\n");
+        msg.append("보다 많은 활동 부탁드립니다.\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/myplanner/myplannerMainView.do";
+        String pcLinkUrl = this.pcDomain + "/fr/myplanner/myplannerCampaignProductList.do";
+        alim.addWebLinkButton("MY레디플래너", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 레디플래너 정산 지급완료
+    @Bean(name = "BM022")
+    public MessageTemplate BM022() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 레디플래너 정산안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 리워드 수익금 지급이 완료되었습니다.\n");
+        msg.append("\n");
+        msg.append("■정산기준월 : %2$s년 %3$s월\n");
+//        msg.append("■지급금액 : %4$,d원\n");
+        msg.append("■입금은행 : %4$s\n");
+        msg.append("■입금계좌 : %5$s\n");
+        msg.append("■예금주 : %6$s\n");
+        msg.append("■문의 : ☎ 1661-0356");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+//        String mobileLinkUrl = this.mobileDomain + "/fr/myplanner/myplannerPaymentView.do";
+//        String pcLinkUrl = this.pcDomain + "/fr/myplanner/myplannerPaymentView.do";
+//        alim.addWebLinkButton("지급내역 확인", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 상품발주안내
+    @Bean(name = "BM015")
+    public MessageTemplate BM015() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 상품발주안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 가입하신 상품에 결합혜택 배송안내드립니다.\n");
+        msg.append("\n");
+        msg.append("■지원혜택 : %2$s\n");
+        msg.append("■배송예정일 : %3$s\n");
+        msg.append("■수령인 : %4$s\n");
+        msg.append("■설치주소 : %5$s\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/mycontract/shippingListView.do";
+        String pcLinkUrl = this.pcDomain + "/fr/mycontract/shippingListView.do";
+        alim.addWebLinkButton("My계약 바로가기", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 상품발주안내(변경시)
+    @Bean(name = "BM016")
+    public MessageTemplate BM016() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 상품발주안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("#{이름} 님, 가입하신 상품에 결합혜택 배송안내드립니다.\n");
+        msg.append("\n");
+        msg.append("■지원혜택 : #{LG김치냉장고(520L)}\n");
+        msg.append("■배송예정일 : #{2020.10.03}\n");
+        msg.append("■수령인 : #{수령인이름}\n");
+        msg.append("■설치주소 : #{주소}\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/mycontract/shippingListView.do";
+        String pcLinkUrl = this.pcDomain + "/fr/mycontract/shippingListView.do";
+        alim.addWebLinkButton("My계약 바로가기", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 혜택지급안내
+    @Bean(name = "BM017")
+    public MessageTemplate BM017() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 혜택지급안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 가입하신 상품에 결합혜택이 지급되었습니다.\n");
+        msg.append("\n");
+        msg.append("■지원내역 : %2$s\n");
+        msg.append("■지원회차 : %3$s회차\n");
+        msg.append("■지급일 : %4$s\n");
+        msg.append("■추가정보 : %5$s\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        // 버튼
+        String mobileLinkUrl = this.mobileDomain + "/fr/mycontract/shippingListView.do";
+        String pcLinkUrl = this.pcDomain + "/fr/mycontract/shippingListView.do";
+        alim.addWebLinkButton("My계약 바로가기", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+
+    // 혜택지급 요청안내
+    @Bean(name = "BM018")
+    public MessageTemplate BM018() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 혜택지급 요청안내");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, SCM관리자에 접속하시어\n");
+        msg.append("지급기한 내에 결합혜택 지급완료 요청드립니다.\n");
+        msg.append("\n");
+        msg.append("■지급완료시점 : %2$tY.%2$tm.%2$td\n");
+        msg.append("■지급기한 : %3$tY.%3$tm.%3$td\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        return alim;
+    }
+
+    // 관리자로그인
+    @Bean(name = "BM019")
+    public MessageTemplate BM019() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 관리자로그인");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("관리자 로그인 인증번호 %1$s 입니다. \n");
+        msg.append("인증번호가 유출되지 않도록 유의해 주세요\n");
+        msg.append("\n");
+        msg.append("감사합니다.");
+        alim.setMessage(msg.toString());
+        return alim;
+    }
+    
+ // 공지사항 등록 후 레디플래너 알림톡 전송
+    @Bean(name = "BM021")
+    public MessageTemplate BM021() {
+        MessageTemplate alim = new MessageTemplate();
+        // 타이틀
+        alim.setTitle("[버킷마켓] 공지사항 등록");
+        // 템플릿 내용
+        StringBuilder msg = new StringBuilder();
+        msg.append("[버킷마켓]\n");
+        msg.append("%1$s 님, 레디플래너 서비스를 이용해주셔서 감사합니다.\n");
+        msg.append("레디플래너 서비스 이용 시에 적용되는 정책 변경 및 판매지침 관련 신규 게시글이 등록되었습니다.\n");
+        msg.append("버킷마켓에서 %2$s 게시글을 꼭 확인하셔서, 레디플래너로 활동 시 참고해 주시기 바랍니다.\n");
+        alim.setMessage(msg.toString());
+        // 버튼
+//        String mobileLinkUrl = this.mobileDomain + "/fr/myplanner/myplannerNoticeList.do";
+        String mobileLinkUrl = "https://m.bucketmarket.co.kr/fr/myplanner/myplannerNoticeList.do";
+//        String pcLinkUrl = this.pcDomain + "/fr/myplanner/myplannerNoticeList.do";
+        String pcLinkUrl = "https://www.bucketmarket.co.kr/fr/myplanner/myplannerNoticeList.do";
+        alim.addWebLinkButton("공지사항 확인하기", mobileLinkUrl, pcLinkUrl);
+        return alim;
+    }
+}

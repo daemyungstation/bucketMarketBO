@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ProductQnA">
+
+    <!-- 관리자 > 결합상품관리 > 상품 QnA 조건절 -->
+    <sql id="productQnAWhere">
+        <where>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND PQ.PRD_QNA_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="searchPrdMstNm != null and searchPrdMstNm != ''">
+                AND DBMS_LOB.INSTR(TPM.PRD_MST_NM, #{searchPrdMstNm}) > 0
+            </if>
+            <if test="searchModelClNm != null and searchModelClNm != ''">
+                AND DBMS_LOB.INSTR(VPM.MODEL_CL_NM || TPM.PRD_MST_SPL_NM, #{searchModelClNm}) > 0
+            </if>
+            <if test="searchModelNm != null and searchModelNm != ''">
+                AND DBMS_LOB.INSTR(VPM.MODEL_NM, #{searchModelNm}) > 0
+            </if>
+            <if test="searchPrdQna != null and searchPrdQna != ''">
+                AND DBMS_LOB.INSTR(PQ.PRD_QNA_CTS || PQ.PRD_QNA_RPL_CTS, #{searchPrdQna}) > 0
+            </if>
+            <if test="searchPrdQnaMemNm != null and searchPrdQnaMemNm !=''">
+                AND PQ.PRD_QNA_MEM_NM = #{searchPrdQnaMemNm}
+            </if>
+            <if test="searchQnaDspYn != null and searchQnaDspYn != ''">
+                AND PQ.PRD_QNA_DSP_YN = #{searchQnaDspYn}
+            </if>
+            <if test="searchPrdQnaRplYn != null and searchPrdQnaRplYn !=''">
+                AND PQ.PRD_QNA_RPL_YN = #{searchPrdQnaRplYn}
+            </if>
+            <if test="searchVdrMstIdx != null and searchVdrMstIdx !=''">
+                AND VM.VDR_MST_IDX = #{searchVdrMstIdx}
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 QnA 목록 개수 -->
+    <select id="selectProductQnAListCount" parameterType="HashMap" resultType="Integer">
+        /* ProductQnA.selectProductQnAListCount */
+        SELECT COUNT(PRD_QNA_IDX)
+        FROM T_PRD_QNA PQ
+        JOIN C_PRD_MST CPM ON CPM.PRD_MST_NO = PQ.PRD_MST_NO
+        JOIN T_PRD_MST TPM ON TPM.PRD_MST_CD = CPM.PRD_MST_CD
+        JOIN T_VDR_MST VM ON VM.VDR_MST_IDX = TPM.VDR_MST_IDX 
+        JOIN V_PRD_MST VPM ON VPM.PROD_CD = CPM.PROD_CD AND VPM.PROD_KIND = CPM.PROD_KIND AND VPM.MODEL_CD = CPM.MODEL_CD
+        <include refid="productQnAWhere"/>
+    </select>
+   
+   <!-- 관리자 > 결합상품관리 > 상품 QnA 목록 -->
+    <select id="selectProductQnAList" parameterType="HashMap" resultType="HashMap">
+        /* ProductQnA.selectProductQnAList */
+        SELECT
+            RNUM,
+            PRD_QNA_IDX,
+            PRD_MST_NO,
+            PRD_MST_NM,
+            PRD_QNA_MEM_NM,
+            SUBSTR(PRD_QNA_CTS,0,10) AS PRD_QNA_CTS,
+            PRD_QNA_DSP_YN,
+            PRD_QNA_REG_DT,
+            PRD_QNA_RPL_YN,
+            PRD_MST_SPL_NM,
+            (SELECT CMN_COM_NM FROM T_CMM_COM CC WHERE CC. CMN_COM_IDX = PRD_MST_TYPE) PRD_MST_TYPE_NM,
+            VDR_MST_NM,
+            MODEL_CL_NM,
+            MODEL_NM,
+            PROD_AMT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                   PRD_QNA_IDX,
+                    PQ.PRD_MST_NO,
+                    PQ.PRD_QNA_MEM_NM,
+                    PQ.PRD_QNA_CTS,
+                    PQ.PRD_QNA_DSP_YN,
+                    PQ.PRD_QNA_REG_DT,
+                    PQ.PRD_QNA_RPL_YN,
+                    CPM.PRD_MST_NM,
+                    TPM.PRD_MST_SPL_NM,
+                    CPM.PRD_MST_TYPE,
+                    VM.VDR_MST_NM,
+                    VPM.MODEL_CL_NM,
+                    VPM.MODEL_NM,
+                    VPM.PROD_AMT
+                FROM T_PRD_QNA PQ
+                JOIN C_PRD_MST CPM ON CPM.PRD_MST_NO = PQ.PRD_MST_NO
+                JOIN T_PRD_MST TPM ON TPM.PRD_MST_CD = CPM.PRD_MST_CD
+                JOIN T_VDR_MST VM ON VM.VDR_MST_IDX = TPM.VDR_MST_IDX 
+                JOIN V_PRD_MST VPM ON VPM.PROD_CD = CPM.PROD_CD AND VPM.PROD_KIND = CPM.PROD_KIND AND VPM.MODEL_CD = CPM.MODEL_CD
+                <include refid="productQnAWhere"/>
+                ORDER BY PRD_QNA_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 QnA 상세 -->
+    <resultMap id="resultTermManagerInfo" type="HashMap">
+        <result column="PRD_QNA_IDX" property="PRD_QNA_IDX" />
+        <result column="PRD_MST_NO" property="PRD_MST_NO" />
+        <result column="PRD_MST_NM" property="PRD_MST_NM" />
+        <result column="MODEL_CL_NM" property="MODEL_CL_NM" />
+        <result column="PRD_MST_SPL_NM" property="PRD_MST_SPL_NM" />
+        <result column="MODEL_NM" property="MODEL_NM" />
+        <result column="PRD_QNA_DSP_YN" property="PRD_QNA_DSP_YN" />
+        <result column="PRD_QNA_REG_DT" property="PRD_QNA_REG_DT" />
+        <result column="PRD_QNA_MEM_NM" property="PRD_QNA_MEM_NM" />
+        <result column="PRD_QNA_HP1" property="PRD_QNA_HP1" />
+        <result column="PRD_QNA_HP2" property="PRD_QNA_HP2" />
+        <result column="PRD_QNA_HP3" property="PRD_QNA_HP3" />
+        <result column="PRD_QNA_SMS_YN" property="PRD_QNA_SMS_YN" />
+        <result column="PRD_QNA_CTS" property="PRD_QNA_CTS" />
+        <result column="PRD_QNA_RPL_YN" property="PRD_QNA_RPL_YN" />
+        <result column="PRD_QNA_RPL_CTS" property="PRD_QNA_RPL_CTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="PRD_QNA_UPD_DT" property="PRD_QNA_UPD_DT" />
+        <result column="PRD_QNA_UPD_ID" property="PRD_QNA_UPD_ID" />
+        <result column="PRD_QNA_UPD_NM" property="PRD_QNA_UPD_NM" />
+    </resultMap>
+    <select id="selectProductQnAInfo" parameterType="HashMap" resultMap="resultTermManagerInfo">
+        /* ProductQnA.selectProductQnAInfo */
+        SELECT
+            PQ.PRD_QNA_IDX,
+            PQ.PRD_MST_NO,
+            CPM.PRD_MST_NM,
+            VPM.MODEL_CL_NM,
+            TPM.PRD_MST_SPL_NM,
+            VPM.MODEL_NM,
+            NVL(PQ.PRD_QNA_DSP_YN,  'N') AS PRD_QNA_DSP_YN,
+            PQ.PRD_QNA_REG_DT,
+            PQ.PRD_QNA_MEM_NM,
+            PQ.PRD_QNA_HP1,
+            PQ.PRD_QNA_HP2,
+            PQ.PRD_QNA_HP3,
+            NVL(PQ.PRD_QNA_SMS_YN,  'N') AS PRD_QNA_SMS_YN,
+            PQ.PRD_QNA_CTS,
+            NVL(PQ.PRD_QNA_RPL_YN, 'N') AS PRD_QNA_RPL_YN,
+            PQ.PRD_QNA_RPL_CTS,
+            PQ.PRD_QNA_UPD_DT,
+            PQ.PRD_QNA_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = PQ.PRD_QNA_UPD_ID) AS PRD_QNA_UPD_NM
+        FROM T_PRD_QNA PQ
+        JOIN C_PRD_MST CPM ON CPM.PRD_MST_NO = PQ.PRD_MST_NO
+        JOIN T_PRD_MST TPM ON TPM.PRD_MST_CD = CPM.PRD_MST_CD
+        JOIN T_VDR_MST VM ON VM.VDR_MST_IDX = TPM.VDR_MST_IDX 
+        JOIN V_PRD_MST VPM ON VPM.PROD_CD = CPM.PROD_CD AND VPM.PROD_KIND = CPM.PROD_KIND AND VPM.MODEL_CD = CPM.MODEL_CD
+        WHERE PRD_QNA_IDX = #{PRD_QNA_IDX}
+    </select>
+    
+    <!-- 관리자 > 결합상품관리 > 상품 QnA 답변 등록 -->
+    <update id="updateProductQnA" parameterType="HashMap">
+        /* ProductQnA.updateProductQnA */
+        UPDATE T_PRD_QNA SET
+            PRD_QNA_RPL_YN = 'Y',
+            PRD_QNA_DSP_YN = #{PRD_QNA_DSP_YN},
+            PRD_QNA_RPL_CTS = #{PRD_QNA_RPL_CTS:CLOB},
+            PRD_QNA_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            PRD_QNA_UPD_ID = #{PRD_QNA_UPD_ID},
+            PRD_QNA_UPD_IP = #{PRD_QNA_UPD_IP}
+        WHERE PRD_QNA_IDX = #{PRD_QNA_IDX}
+    </update>
+</mapper>

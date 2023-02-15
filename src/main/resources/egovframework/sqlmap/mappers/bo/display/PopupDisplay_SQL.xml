@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PopupDisplay">
+    <!-- 관리자 > 전시관리 > 팝업관리 > 검색 조건 -->
+    <sql id="popupDisplayWhere">
+        <where>
+            <if test="searchPopMstChnGbn != null and searchPopMstChnGbn != ''">
+                AND POP_MST_CHN_GBN = #{searchPopMstChnGbn}
+            </if>
+            <if test="searchPopMstTitle != null and searchPopMstTitle != ''">
+                AND POP_MST_TITLE LIKE '%' || #{searchPopMstTitle} || '%'
+            </if>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND <![CDATA[(POP_MST_ED_DT >= REPLACE(#{searchStartDate},'-', '') AND POP_MST_ST_DT <= REPLACE(#{searchEndDate},'-', ''))]]>
+            </if>
+            <if test="searchPopMstUseYn != null and searchPopMstUseYn != ''">
+                AND POP_MST_USE_YN = #{searchPopMstUseYn}
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 전시관리 > 팝업관리 > 목록 개수 -->
+    <select id="selectPopupDisplayCount" parameterType="hashMap" resultType="integer">
+        /* PopupDisplay.selectPopupDisplayCount */
+        SELECT COUNT(POP_MST_IDX)
+        FROM T_POP_MST
+        <include refid="popupDisplayWhere"/>
+    </select> 
+    
+    <!-- 관리자 > 전시관리 > 팝업관리 > 목록 -->
+    <select id="selectPopupDisplayList" parameterType="hashMap" resultType="hashMap">
+        /* PopupDisplay.selectPopupDisplayList */
+        SELECT S2.*,
+            (
+                SELECT CMM_FLE_IDX
+                FROM T_CMM_FLE CF
+                WHERE CF.CMM_FLE_TB_PK = S2.POP_MST_IDX
+                    AND CF.CMM_FLE_TB_NM = 'T_POP_MST'
+                    AND CF.CMM_FLE_USE_YN = 'Y'
+            ) AS CMM_FLE_IDX
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                   POP_MST_IDX,
+                   POP_MST_TITLE,
+                   POP_MST_CHN_GBN,
+                   POP_MST_ST_DT,
+                   POP_MST_ED_DT,
+                   POP_MST_USE_YN,
+                   POP_MST_REG_DT
+                FROM T_POP_MST
+                <include refid="popupDisplayWhere"/>
+                ORDER BY POP_MST_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 전시관리 > 팝업관리 > 상세정보 -->
+    <select id="selectPopupDisplayInfo" parameterType="hashMap" resultType="hashMap">
+        /* PopupDisplay.selectPopupDisplayInfo */
+        SELECT
+            POP_MST_IDX, 
+            POP_MST_TITLE, 
+            POP_MST_ST_DT, 
+            POP_MST_ST_HH, 
+            POP_MST_ST_MI, 
+            POP_MST_ED_DT, 
+            POP_MST_ED_HH, 
+            POP_MST_ED_MI,
+            POP_MST_X, 
+            POP_MST_Y, 
+            POP_MST_W, 
+            POP_MST_H, 
+            POP_MST_MDE,
+            POP_MST_CHN_GBN,
+            POP_MST_LNK,
+            POP_MST_DAY_YN, 
+            POP_MST_USE_YN,
+            POP_MST_REG_DT, 
+            POP_MST_REG_IP, 
+            POP_MST_REG_ID, 
+            POP_MST_UPD_DT, 
+            POP_MST_UPD_IP, 
+            POP_MST_UPD_ID
+        FROM T_POP_MST
+        WHERE POP_MST_IDX = #{POP_MST_IDX}
+    </select>
+
+    <!-- 관리자 > 전시관리 > 팝업관리 > 등록 -->
+    <insert id="insertPopupDisplay" parameterType="hashMap">
+        <selectKey keyProperty="POP_MST_IDX" keyColumn="POP_MST_IDX" resultType="Integer" order="BEFORE">
+            SELECT SEQ_POP_MST_IDX.NEXTVAL AS POP_MST_IDX FROM DUAL
+        </selectKey>
+        /* PopupDisplay.insertPopupDisplay */
+        INSERT INTO T_POP_MST (
+            POP_MST_IDX,
+            POP_MST_TITLE,
+            POP_MST_ST_DT,
+            POP_MST_ST_HH,
+            POP_MST_ST_MI,
+            POP_MST_ED_DT,
+            POP_MST_ED_HH,
+            POP_MST_ED_MI,
+            POP_MST_X,
+            POP_MST_Y,
+            POP_MST_W,
+            POP_MST_H,
+            POP_MST_MDE,
+            POP_MST_CHN_GBN,
+            POP_MST_LNK,
+            POP_MST_DAY_YN,
+            POP_MST_USE_YN,
+            POP_MST_REG_DT,
+            POP_MST_REG_IP,
+            POP_MST_REG_ID
+        ) VALUES (
+            #{POP_MST_IDX},
+            #{POP_MST_TITLE},
+            REPLACE(#{POP_MST_ST_DT}, '-', ''),
+            #{POP_MST_ST_HH},
+            #{POP_MST_ST_MI},
+            REPLACE(#{POP_MST_ED_DT}, '-', ''),
+            #{POP_MST_ED_HH},
+            #{POP_MST_ED_MI},
+            #{POP_MST_X},
+            #{POP_MST_Y},
+            #{POP_MST_W},
+            #{POP_MST_H},
+            #{POP_MST_MDE},
+            #{POP_MST_CHN_GBN},
+            #{POP_MST_LNK},
+            NVL(#{POP_MST_DAY_YN}, 'N'),
+            #{POP_MST_USE_YN},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{POP_MST_REG_IP},
+            #{POP_MST_REG_ID}
+        )
+    </insert>
+  
+    <!-- 관리자 > 전시관리 > 팝업관리 > 수정 -->
+    <update id="updatePopupDisplay" parameterType="hashMap">
+        /* PopupDisplay.updatePopupDisplay */
+        UPDATE T_POP_MST SET
+            POP_MST_TITLE = #{POP_MST_TITLE},
+            POP_MST_ST_DT = REPLACE(#{POP_MST_ST_DT}, '-', ''),
+            POP_MST_ST_HH = #{POP_MST_ST_HH},
+            POP_MST_ST_MI = #{POP_MST_ST_MI},
+            POP_MST_ED_DT = REPLACE(#{POP_MST_ED_DT}, '-', ''),
+            POP_MST_ED_HH = #{POP_MST_ED_HH},
+            POP_MST_ED_MI = #{POP_MST_ED_MI},
+            POP_MST_X = #{POP_MST_X},
+            POP_MST_Y = #{POP_MST_Y},
+            POP_MST_W = #{POP_MST_W},
+            POP_MST_H = #{POP_MST_H},
+            POP_MST_MDE = #{POP_MST_MDE},
+            POP_MST_LNK = #{POP_MST_LNK},
+            POP_MST_DAY_YN = NVL(#{POP_MST_DAY_YN}, 'N'),
+            POP_MST_USE_YN = #{POP_MST_USE_YN},
+            POP_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            POP_MST_UPD_IP = #{POP_MST_UPD_IP},
+            POP_MST_UPD_ID = #{POP_MST_UPD_ID}
+        WHERE POP_MST_IDX = #{POP_MST_IDX}
+    </update>
+</mapper>

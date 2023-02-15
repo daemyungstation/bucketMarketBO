@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="PlannerCalculate">
+       
+    <!-- 관리자 > 레디플래너 > 정산 목록 개수 -->
+    <select id="selectPlannerCalculateListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerCalculate.selectPlannerCalculateListCount */ 
+        SELECT
+            COUNT(1)
+        FROM 
+            (
+            SELECT
+                ROWNUM AS RNUM,
+                S1.RDP_MST_IDX,
+                S1.RDP_MST_NO,
+                S1.RDP_MST_MEM_NM,
+                S1.RDP_MST_HP1,
+                S1.RDP_MST_HP2,
+                S1.RDP_MST_HP3,
+                S1.RDP_MST_HP,       
+                S1.RDP_MST_BUSI_CLS,
+                S1.RDP_MST_BUSI1,
+                S1.RDP_MST_BUSI2,
+                S1.RDP_MST_BUSI3,
+                S1.RDP_MST_BUSI,
+                S1.RDP_MST_SSN1,
+                S1.RDP_MST_SSN2,
+                S1.RDP_MST_BUSI_CLS_NM,
+                S1.pay,
+                S1.RMT_ORD_YN,
+                S1.RMT_ORD_PAY_DT
+            FROM
+            (
+                select 
+                    TT.RDP_MST_IDX,
+                    TT.RDP_MST_NO,
+                    TT.RDP_MST_MEM_NM,
+                    TT.RDP_MST_HP1,
+                    TT.RDP_MST_HP2,
+                    TT.RDP_MST_HP3,
+                    TT.RDP_MST_HP,       
+                    TT.RDP_MST_BUSI_CLS,
+                    TT.RDP_MST_BUSI1,
+                    TT.RDP_MST_BUSI2,
+                    TT.RDP_MST_BUSI3,
+                    TT.RDP_MST_BUSI,
+                    TT.RDP_MST_SSN1,
+                    TT.RDP_MST_SSN2,
+                    TT.RDP_MST_BUSI_CLS_NM,
+                    TT.pay,
+                    TRO.RMT_ORD_YN,
+                    TRO.RMT_ORD_PAY_DT
+                from (
+                    select 
+                        RDP_MST_IDX,
+                        RDP_MST_NO,
+                        RDP_MST_MEM_NM,
+                        RDP_MST_HP1,
+                        RDP_MST_HP2,
+                        RDP_MST_HP3,
+                        RDP_MST_HP,       
+                        RDP_MST_BUSI_CLS,
+                        RDP_MST_BUSI1,
+                        RDP_MST_BUSI2,
+                        RDP_MST_BUSI3,
+                        RDP_MST_BUSI,
+                        RDP_MST_SSN1,
+                        RDP_MST_SSN2,
+                        RDP_MST_BUSI_CLS_NM,
+                        SUM(pay) pay
+                    from (
+                        select 
+                            TRM.RDP_MST_IDX,
+                            TRM.RDP_MST_NO,
+                            TRM.RDP_MST_MEM_NM,
+                            TRM.RDP_MST_HP1,
+                            TRM.RDP_MST_HP2,
+                            TRM.RDP_MST_HP3,
+                            TRM.RDP_MST_HP1 || '-' || TRM.RDP_MST_HP2 || '-' || TRM.RDP_MST_HP3 AS RDP_MST_HP,
+                            TRM.RDP_MST_BUSI_CLS,
+                            TRM.RDP_MST_BUSI1,
+                            TRM.RDP_MST_BUSI2,
+                            TRM.RDP_MST_BUSI3,
+                            TRM.RDP_MST_BUSI1 || '-' || TRM.RDP_MST_BUSI2 || '-' || TRM.RDP_MST_BUSI3 AS RDP_MST_BUSI,
+                            TRM.RDP_MST_SSN1,
+                            TRM.RDP_MST_SSN2,
+                            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+                            PRD_MST_RDP_DVD_PAY pay,
+                            (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')) - substr(vom.join_dt, 0,6) + 1 AS paymentCount,
+                            VOM.JOIN_DT                        
+                        from T_ORD_DLCC TOD, V_ORD_MST VOM, T_RDP_MST TRM, T_ORD_MST TOM, C_PRD_MST CPM
+                        where TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                and TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                and TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                and TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                AND VOM.JOIN_DT >= to_char(ADD_MONTHS(to_date((#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01'), 'YYYYMMDD'), -(CPM.PRD_MST_RDP_DVD_CNT - 1)),'YYYYMMDD')
+                                and VOM.JOIN_DT <![CDATA[<]]>  to_char(#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01')
+                                and VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                and PRD_MST_RDP_DVD_PAY is not null
+                                and PRD_MST_RDP_DVD_CNT is not null      
+                                              
+                        UNION ALL
+                        
+                        select 
+                            TRM.RDP_MST_IDX,
+                            TRM.RDP_MST_NO,
+                            TRM.RDP_MST_MEM_NM,
+                            TRM.RDP_MST_HP1,
+                            TRM.RDP_MST_HP2,
+                            TRM.RDP_MST_HP3,
+                            TRM.RDP_MST_HP1 || '-' || TRM.RDP_MST_HP2 || '-' || TRM.RDP_MST_HP3 AS RDP_MST_HP,       
+                            TRM.RDP_MST_BUSI_CLS,
+                            TRM.RDP_MST_BUSI1,
+                            TRM.RDP_MST_BUSI2,
+                            TRM.RDP_MST_BUSI3,
+                            TRM.RDP_MST_BUSI1 || '-' || TRM.RDP_MST_BUSI2 || '-' || TRM.RDP_MST_BUSI3 AS RDP_MST_BUSI,
+                            TRM.RDP_MST_SSN1,
+                            TRM.RDP_MST_SSN2,
+                            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+                            case when PRD_MST_RDP_DVD_PAY is not null then PRD_MST_RDP_DVD_PAY
+                            else PRD_MST_RDP_CMS
+                            end pay,
+                            1 AS paymentCount,
+                            VOM.JOIN_DT                        
+                        from T_ORD_DLCC TOD, V_ORD_MST VOM, T_RDP_MST TRM, T_ORD_MST TOM, C_PRD_MST CPM
+                        where TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                and TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                and TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                and TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                and VOM.JOIN_DT like  to_char(#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '%')
+                                and VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                and (PRD_MST_RDP_DVD_PAY is not null or PRD_MST_RDP_CMS is not null)
+                    ) T 
+                    group by 
+                        RDP_MST_IDX,
+                        RDP_MST_NO,
+                        RDP_MST_MEM_NM,
+                        RDP_MST_HP1,
+                        RDP_MST_HP2,
+                        RDP_MST_HP3,
+                        RDP_MST_HP,       
+                        RDP_MST_BUSI_CLS,
+                        RDP_MST_BUSI1,
+                        RDP_MST_BUSI2,
+                        RDP_MST_BUSI3,
+                        RDP_MST_BUSI,
+                        RDP_MST_SSN1,
+                        RDP_MST_SSN2,
+                        RDP_MST_BUSI_CLS_NM
+                ) TT, T_RMT_ORD TRO
+                where TT.RDP_MST_IDX=TRO.RDP_MST_IDX (+)
+                GROUP BY 
+                    TT.RDP_MST_IDX, TT.RDP_MST_NO, TT.RDP_MST_MEM_NM, TT.RDP_MST_HP1, 
+                    TT.RDP_MST_HP2, TT.RDP_MST_HP3, TT.RDP_MST_HP, TT.RDP_MST_BUSI_CLS, TT.RDP_MST_BUSI1, 
+                    TT.RDP_MST_BUSI2, TT.RDP_MST_BUSI3, TT.RDP_MST_BUSI, TT.RDP_MST_SSN1, TT.RDP_MST_SSN2, 
+                    TT.RDP_MST_BUSI_CLS_NM, TT.pay, TRO.RMT_ORD_YN, TRO.RMT_ORD_PAY_DT
+            ) S1
+        ) S2
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 목록 -->
+    <select id="selectPlannerCalculateList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerCalculate.selectPlannerCalculateList */
+        SELECT *
+        FROM(
+            SELECT
+                ROWNUM AS RNUM,
+                S1.RDP_MST_IDX,
+                S1.RDP_MST_NO,
+                S1.RDP_MST_MEM_NM,
+                S1.RDP_MST_HP1,
+                S1.RDP_MST_HP2,
+                S1.RDP_MST_HP3,
+                S1.RDP_MST_HP,       
+                S1.RDP_MST_BUSI_CLS,
+                S1.RDP_MST_BUSI1,
+                S1.RDP_MST_BUSI2,
+                S1.RDP_MST_BUSI3,
+                S1.RDP_MST_BUSI,
+                S1.RDP_MST_SSN1,
+                S1.RDP_MST_SSN2,
+                S1.RDP_MST_BUSI_CLS_NM,
+                S1.pay,
+                S1.RMT_ORD_YN,
+                S1.RMT_ORD_PAY_DT
+            FROM
+            (
+                select 
+                    TT.RDP_MST_IDX,
+                    TT.RDP_MST_NO,
+                    TT.RDP_MST_MEM_NM,
+                    TT.RDP_MST_HP1,
+                    TT.RDP_MST_HP2,
+                    TT.RDP_MST_HP3,
+                    TT.RDP_MST_HP,       
+                    TT.RDP_MST_BUSI_CLS,
+                    TT.RDP_MST_BUSI1,
+                    TT.RDP_MST_BUSI2,
+                    TT.RDP_MST_BUSI3,
+                    TT.RDP_MST_BUSI,
+                    TT.RDP_MST_SSN1,
+                    TT.RDP_MST_SSN2,
+                    TT.RDP_MST_BUSI_CLS_NM,
+                    TT.pay,
+                    TRO.RMT_ORD_YN,
+                    TRO.RMT_ORD_PAY_DT,
+                    TT.RDP_MST_REG_DT
+                from (
+                    select 
+                        RDP_MST_IDX,
+                        RDP_MST_NO,
+                        RDP_MST_MEM_NM,
+                        RDP_MST_HP1,
+                        RDP_MST_HP2,
+                        RDP_MST_HP3,
+                        RDP_MST_HP,       
+                        RDP_MST_BUSI_CLS,
+                        RDP_MST_BUSI1,
+                        RDP_MST_BUSI2,
+                        RDP_MST_BUSI3,
+                        RDP_MST_BUSI,
+                        RDP_MST_SSN1,
+                        RDP_MST_SSN2,
+                        RDP_MST_BUSI_CLS_NM,
+                        SUM(pay) pay,
+                        RDP_MST_REG_DT    
+                    from (
+                        select 
+                            TRM.RDP_MST_IDX,
+                            TRM.RDP_MST_NO,
+                            TRM.RDP_MST_MEM_NM,
+                            TRM.RDP_MST_HP1,
+                            TRM.RDP_MST_HP2,
+                            TRM.RDP_MST_HP3,
+                            TRM.RDP_MST_HP1 || '-' || TRM.RDP_MST_HP2 || '-' || TRM.RDP_MST_HP3 AS RDP_MST_HP,
+                            TRM.RDP_MST_BUSI_CLS,
+                            TRM.RDP_MST_BUSI1,
+                            TRM.RDP_MST_BUSI2,
+                            TRM.RDP_MST_BUSI3,
+                            TRM.RDP_MST_BUSI1 || '-' || TRM.RDP_MST_BUSI2 || '-' || TRM.RDP_MST_BUSI3 AS RDP_MST_BUSI,
+                            TRM.RDP_MST_SSN1,
+                            TRM.RDP_MST_SSN2,
+                            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+                            PRD_MST_RDP_DVD_PAY pay,
+                            (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')) - substr(vom.join_dt, 0,6) + 1 AS paymentCount,
+                            VOM.JOIN_DT,
+                            TRM.RDP_MST_REG_DT
+                        from T_ORD_DLCC TOD, V_ORD_MST VOM, T_RDP_MST TRM, T_ORD_MST TOM, C_PRD_MST CPM
+                        where TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                and TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                and TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                and TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                AND VOM.JOIN_DT >= to_char(ADD_MONTHS(to_date((#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01'), 'YYYYMMDD'), -(CPM.PRD_MST_RDP_DVD_CNT - 1)),'YYYYMMDD')
+                                and VOM.JOIN_DT <![CDATA[<]]>  to_char(#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01')
+                                and VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                and PRD_MST_RDP_DVD_PAY is not null
+                                and PRD_MST_RDP_DVD_CNT is not null
+                        
+                        UNION ALL
+                        
+                        select 
+                            TRM.RDP_MST_IDX,
+                            TRM.RDP_MST_NO,
+                            TRM.RDP_MST_MEM_NM,
+                            TRM.RDP_MST_HP1,
+                            TRM.RDP_MST_HP2,
+                            TRM.RDP_MST_HP3,
+                            TRM.RDP_MST_HP1 || '-' || TRM.RDP_MST_HP2 || '-' || TRM.RDP_MST_HP3 AS RDP_MST_HP,       
+                            TRM.RDP_MST_BUSI_CLS,
+                            TRM.RDP_MST_BUSI1,
+                            TRM.RDP_MST_BUSI2,
+                            TRM.RDP_MST_BUSI3,
+                            TRM.RDP_MST_BUSI1 || '-' || TRM.RDP_MST_BUSI2 || '-' || TRM.RDP_MST_BUSI3 AS RDP_MST_BUSI,
+                            TRM.RDP_MST_SSN1,
+                            TRM.RDP_MST_SSN2,
+                            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = TRM.RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+                            case when PRD_MST_RDP_DVD_PAY is not null then PRD_MST_RDP_DVD_PAY
+                            else PRD_MST_RDP_CMS
+                            end pay,
+                            1 AS paymentCount,
+                            VOM.JOIN_DT,
+                            TRM.RDP_MST_REG_DT                     
+                        from T_ORD_DLCC TOD, V_ORD_MST VOM, T_RDP_MST TRM, T_ORD_MST TOM, C_PRD_MST CPM
+                        where TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                            and TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            and TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                            and TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                            and VOM.JOIN_DT like  to_char(#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '%')
+                            and VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                            and (PRD_MST_RDP_DVD_PAY is not null or PRD_MST_RDP_CMS is not null)
+                    ) T 
+                    group by 
+                        RDP_MST_IDX,
+                        RDP_MST_NO,
+                        RDP_MST_MEM_NM,
+                        RDP_MST_HP1,
+                        RDP_MST_HP2,
+                        RDP_MST_HP3,
+                        RDP_MST_HP,       
+                        RDP_MST_BUSI_CLS,
+                        RDP_MST_BUSI1,
+                        RDP_MST_BUSI2,
+                        RDP_MST_BUSI3,
+                        RDP_MST_BUSI,
+                        RDP_MST_SSN1,
+                        RDP_MST_SSN2,
+                        RDP_MST_BUSI_CLS_NM,
+                        RDP_MST_REG_DT
+                ) TT, T_RMT_ORD TRO
+                where TT.RDP_MST_IDX=TRO.RDP_MST_IDX (+)
+                GROUP BY 
+                    TT.RDP_MST_IDX, TT.RDP_MST_NO, TT.RDP_MST_MEM_NM, TT.RDP_MST_HP1, 
+                    TT.RDP_MST_HP2, TT.RDP_MST_HP3, TT.RDP_MST_HP, TT.RDP_MST_BUSI_CLS, TT.RDP_MST_BUSI1, 
+                    TT.RDP_MST_BUSI2, TT.RDP_MST_BUSI3, TT.RDP_MST_BUSI, TT.RDP_MST_SSN1, TT.RDP_MST_SSN2, 
+                    TT.RDP_MST_BUSI_CLS_NM, TT.pay, TRO.RMT_ORD_YN, TRO.RMT_ORD_PAY_DT, TT.RDP_MST_REG_DT
+                    ORDER BY TT.RDP_MST_REG_DT DESC
+            ) S1
+        ) S2
+        WHERE 1=1
+    <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+        AND S2.RNUM BETWEEN #{startNum} AND #{endNum}
+    </if>
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 상세 실적 개수 -->
+    <select id="selectPlannerCalculateHistoryListCount" parameterType="HashMap" resultType="Integer">
+        /* PlannerCalculate.selectPlannerCalculateHistoryListCount */ 
+        SELECT
+            COUNT(1)
+        FROM (
+        (
+                SELECT
+                    ROWNUM AS RNUM,
+                    S1.MEM_NM,
+                    S1.CELL,
+                    S1.PRD_MST_NM,
+                    S1.ORD_MST_ORD_DT,
+                    S1.JOIN_DT,
+                    S1.KSTBIT,
+                    S1.PAY,
+                    S1.RMT_ORD_YN,
+                    S1.RMT_ORD_PAY_DT
+                FROM
+                    (
+                        SELECT
+                            TT.MEM_NM,
+                            TT.CELL,
+                            TT.PRD_MST_NM,
+                            TT.ORD_MST_ORD_DT,
+                            TT.JOIN_DT,
+                            TT.KSTBIT,
+                            TT.PAY,
+                            TRO.RMT_ORD_YN,
+                            TRO.RMT_ORD_PAY_DT,
+                            TRO.RDP_MST_IDX,
+                            TT.RDP_MST_IDX
+                        FROM
+                            (
+                                SELECT
+                                    TOD.MEM_NM,
+                                    TOD.CELL,
+                                    CPM.PRD_MST_NM,
+                                    TOM.ORD_MST_ORD_DT,
+                                    VOM.JOIN_DT,
+                                    VOM.KSTBIT,
+                                    PRD_MST_RDP_DVD_PAY PAY,
+                                    (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')) - SUBSTR(VOM.JOIN_DT, 0, 6) + 1 AS PAYMENTCOUNT,
+                                    TOD.RDP_MST_IDX
+                                    
+                                FROM
+                                    T_ORD_DLCC   TOD,
+                                    V_ORD_MST    VOM,
+                                    T_RDP_MST    TRM,
+                                    T_ORD_MST    TOM,
+                                    C_PRD_MST    CPM
+                                WHERE
+                                    TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                    AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                    AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                    AND VOM.JOIN_DT >= to_char(ADD_MONTHS(to_date((#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01'), 'YYYYMMDD'), -(CPM.PRD_MST_RDP_DVD_CNT - 1)),'YYYYMMDD')
+                                    AND VOM.JOIN_DT <![CDATA[<]]> (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01')
+                                    AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                    AND PRD_MST_RDP_DVD_PAY IS NOT NULL
+                                    AND PRD_MST_RDP_DVD_CNT IS NOT NULL
+                                UNION ALL
+                                SELECT
+                                    TOD.MEM_NM,
+                                    TOD.CELL,
+                                    CPM.PRD_MST_NM,
+                                    TOM.ORD_MST_ORD_DT,
+                                    VOM.JOIN_DT,
+                                    VOM.KSTBIT,
+                                    CASE
+                                        WHEN PRD_MST_RDP_DVD_PAY IS NOT NULL THEN
+                                            PRD_MST_RDP_DVD_PAY
+                                        ELSE
+                                            PRD_MST_RDP_CMS
+                                    END PAY,
+                                    1 AS PAYMENTCOUNT,
+                                    TOD.RDP_MST_IDX
+                                FROM
+                                    T_ORD_DLCC   TOD,
+                                    V_ORD_MST    VOM,
+                                    T_RDP_MST    TRM,
+                                    T_ORD_MST    TOM,
+                                    C_PRD_MST    CPM
+                                WHERE
+                                    TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                    AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                    AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                    AND VOM.JOIN_DT like  (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '%')
+                                    AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                    AND ( PRD_MST_RDP_DVD_PAY IS NOT NULL
+                                          OR PRD_MST_RDP_CMS IS NOT NULL )
+                            ) TT, T_RMT_ORD TRO
+                        WHERE
+                            TT.RDP_MST_IDX=${RDP_MST_IDX}
+                            AND TT.RDP_MST_IDX = TRO.RDP_MST_IDX (+)
+                            GROUP BY 
+                            TT.RDP_MST_IDX, TT.MEM_NM, TT.CELL, TT.PRD_MST_NM, TT.ORD_MST_ORD_DT, 
+                            TT.JOIN_DT, TT.KSTBIT, TT.PAY, TRO.RMT_ORD_YN, TRO.RMT_ORD_PAY_DT, 
+                            TRO.RDP_MST_IDX
+                            ORDER BY TT.JOIN_DT 
+                    ) S1
+            )
+        )
+            
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 정산 상세 실적 목록 -->
+    <select id="selectPlannerCalculateHistoryList" parameterType="HashMap" resultType="HashMap">
+        /* PlannerCalculate.selectPlannerCalculateHistoryList */
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    ROWNUM AS RNUM,
+                    S1.MEM_NM,
+                    S1.CELL,
+                    S1.PRD_MST_NM,
+                    S1.ORD_MST_ORD_DT,
+                    S1.JOIN_DT,
+                    S1.KSTBIT,
+                    S1.PAY,
+                    S1.RMT_ORD_YN,
+                    S1.RMT_ORD_PAY_DT
+                FROM
+                    (
+                        SELECT
+                            TT.MEM_NM,
+                            TT.CELL,
+                            TT.PRD_MST_NM,
+                            TT.ORD_MST_ORD_DT,
+                            TT.JOIN_DT,
+                            TT.KSTBIT,
+                            TT.PAY,
+                            TRO.RMT_ORD_YN,
+                            TRO.RMT_ORD_PAY_DT,
+                            TRO.RDP_MST_IDX,
+                            TT.RDP_MST_IDX
+                        FROM
+                            (
+                                SELECT
+                                    TOD.MEM_NM,
+                                    TOD.CELL,
+                                    CPM.PRD_MST_NM,
+                                    TOM.ORD_MST_ORD_DT,
+                                    VOM.JOIN_DT,
+                                    VOM.KSTBIT,
+                                    PRD_MST_RDP_DVD_PAY PAY,
+                                    (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0')) - SUBSTR(VOM.JOIN_DT, 0, 6) + 1 AS PAYMENTCOUNT,
+                                    TOD.RDP_MST_IDX
+                                    
+                                FROM
+                                    T_ORD_DLCC   TOD,
+                                    V_ORD_MST    VOM,
+                                    T_RDP_MST    TRM,
+                                    T_ORD_MST    TOM,
+                                    C_PRD_MST    CPM
+                                WHERE
+                                    TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                    AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                    AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                    AND VOM.JOIN_DT >= to_char(ADD_MONTHS(to_date((#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01'), 'YYYYMMDD'), -(CPM.PRD_MST_RDP_DVD_CNT - 1)),'YYYYMMDD')
+                                    AND VOM.JOIN_DT <![CDATA[<]]> (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '01')
+                                    AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                    AND PRD_MST_RDP_DVD_PAY IS NOT NULL
+                                    AND PRD_MST_RDP_DVD_CNT IS NOT NULL
+                                UNION ALL
+                                SELECT
+                                    TOD.MEM_NM,
+                                    TOD.CELL,
+                                    CPM.PRD_MST_NM,
+                                    TOM.ORD_MST_ORD_DT,
+                                    VOM.JOIN_DT,
+                                    VOM.KSTBIT,
+                                    CASE
+                                        WHEN PRD_MST_RDP_DVD_PAY IS NOT NULL THEN
+                                            PRD_MST_RDP_DVD_PAY
+                                        ELSE
+                                            PRD_MST_RDP_CMS
+                                    END PAY,
+                                    1 AS PAYMENTCOUNT,
+                                    TOD.RDP_MST_IDX
+                                FROM
+                                    T_ORD_DLCC   TOD,
+                                    V_ORD_MST    VOM,
+                                    T_RDP_MST    TRM,
+                                    T_ORD_MST    TOM,
+                                    C_PRD_MST    CPM
+                                WHERE
+                                    TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                                    AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                                    AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                                    AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                                    AND VOM.JOIN_DT like  (#{searchCalculateYear} || LPAD(#{searchCalculateMonth}, 2, '0') || '%')
+                                    AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                                    AND ( PRD_MST_RDP_DVD_PAY IS NOT NULL
+                                          OR PRD_MST_RDP_CMS IS NOT NULL )
+                            ) TT, T_RMT_ORD TRO
+                        WHERE
+                            TT.RDP_MST_IDX=${RDP_MST_IDX}
+                            AND TT.RDP_MST_IDX = TRO.RDP_MST_IDX (+)
+                            GROUP BY 
+                            TT.RDP_MST_IDX, TT.MEM_NM, TT.CELL, TT.PRD_MST_NM, TT.ORD_MST_ORD_DT, 
+                            TT.JOIN_DT, TT.KSTBIT, TT.PAY, TRO.RMT_ORD_YN, TRO.RMT_ORD_PAY_DT, 
+                            TRO.RDP_MST_IDX
+                            ORDER BY TT.JOIN_DT 
+                    ) S1
+            ) S2
+            WHERE
+                1 = 1
+                <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+                    AND S2.RNUM BETWEEN #{startNum} AND #{endNum}
+                </if>
+    </select>
+    
+    <!-- 정산 요청 -->
+    <insert id="requestCalculate" parameterType="HashMap">
+        /* PlannerCalculate.requestCalculate */
+        INSERT INTO T_RMT_ORD (
+            ORD_MST_IDX,
+            RDP_MST_IDX,
+            RMT_ORD_YN,
+            RMT_ORD_REG_DT,
+            RMT_ORD_REG_IP,
+            RMT_ORD_REG_ID,
+            RMT_ORD_RQT_DT,
+            PRD_MST_RDP_DVD_PAY
+        )
+        SELECT
+            TT.ORD_MST_IDX,
+            TT.RDP_MST_IDX,
+            'N' AS RMT_ORD_YN,
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{RMT_ORD_REG_IP},
+            #{RMT_ORD_REG_ID},
+            SUBSTR(TT.RMT_ORD_RQT_DT, 0, 6) AS RMT_ORD_RQT_DT,
+            TT.PAY
+        FROM
+            (
+                SELECT
+                    ORD_MST_IDX,
+                    RDP_MST_IDX,
+                    SUM(PAY) PAY,
+                    RMT_ORD_RQT_DT
+                FROM
+                    (
+                        SELECT
+                            TOD.ORD_MST_IDX,
+                            TRM.RDP_MST_IDX,
+                            PRD_MST_RDP_DVD_PAY PAY,
+                            (#{calculateYear} || LPAD(#{calculateMonth}, 2, '0')) - SUBSTR(VOM.JOIN_DT, 0, 6) + 1 AS PAYMENTCOUNT,
+                            VOM.JOIN_DT,
+                            TO_CHAR(#{calculateYear} || LPAD(#{calculateMonth}, 2, '0') || '01') AS RMT_ORD_RQT_DT
+                        FROM
+                            T_ORD_DLCC   TOD,
+                            V_ORD_MST    VOM,
+                            T_RDP_MST    TRM,
+                            T_ORD_MST    TOM,
+                            C_PRD_MST    CPM
+                        WHERE
+                            TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                            AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                            AND VOM.JOIN_DT >= to_char(ADD_MONTHS(to_date((#{calculateYear} || LPAD(#{calculateMonth}, 2, '0') || '01'), 'YYYYMMDD'), -(CPM.PRD_MST_RDP_DVD_CNT - 1)),'YYYYMMDD')
+                            AND VOM.JOIN_DT <![CDATA[<]]> (#{calculateYear} || LPAD(#{calculateMonth}, 2, '0') || '01')
+                            AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))                
+                            AND PRD_MST_RDP_DVD_PAY IS NOT NULL
+                            AND PRD_MST_RDP_DVD_CNT IS NOT NULL
+                        UNION ALL
+                        SELECT
+                            TOD.ORD_MST_IDX,
+                            TRM.RDP_MST_IDX,
+                            CASE
+                                WHEN PRD_MST_RDP_DVD_PAY IS NOT NULL THEN
+                                    PRD_MST_RDP_DVD_PAY
+                                ELSE
+                                    PRD_MST_RDP_CMS
+                            END PAY,
+                            1 AS PAYMENTCOUNT,
+                            VOM.JOIN_DT,
+                            TO_CHAR(#{calculateYear} || LPAD(#{calculateMonth}, 2, '0') || '01') AS RMT_ORD_RQT_DT
+                        FROM
+                            T_ORD_DLCC   TOD,
+                            V_ORD_MST    VOM,
+                            T_RDP_MST    TRM,
+                            T_ORD_MST    TOM,
+                            C_PRD_MST    CPM
+                        WHERE
+                            TRM.RDP_MST_IDX = TOD.RDP_MST_IDX
+                            AND TOD.ORD_MST_IDX = VOM.ORD_MST_IDX
+                            AND TOD.ORD_MST_IDX = TOM.ORD_MST_IDX
+                            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+                            AND VOM.JOIN_DT LIKE TO_CHAR(#{calculateYear} || LPAD(#{calculateMonth}, 2, '0') || '%')
+                            AND VOM.KSTBIT in (SELECT CMN_COM_ETC1 FROM T_CMM_COM CC WHERE CMN_COM_IDX in(${@common.code.Code@MEMBER_JOIN_COMPLETE},${@common.code.Code@MEMBER_JOIN_CANCEL},${@common.code.Code@MEMBER_JOIN_EVENT}))
+                            AND ( PRD_MST_RDP_DVD_PAY IS NOT NULL
+                                  OR PRD_MST_RDP_CMS IS NOT NULL )
+                    ) T
+                GROUP BY
+                    ORD_MST_IDX,
+                    RDP_MST_IDX,
+                    RMT_ORD_RQT_DT
+            ) TT
+            
+    </insert>
+    
+</mapper>

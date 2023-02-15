@@ -1,0 +1,169 @@
+package web.bo.planner.service.impl;
+
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.springframework.stereotype.Service;
+
+import common.dao.CommonDefaultDAO;
+import common.session.SessionsManager;
+import common.util.IPUtil;
+import common.util.JSONUtil;
+import common.util.StringUtil;
+import web.bo.planner.service.PlannerPaymentService;
+import web.message.MessageType;
+import web.message.service.MessageService;
+
+/**
+ * <pre>
+ * &#64;PackageName: web.bo.planner.service.impl
+ * &#64;FileName : PlannerCalculateServiceImpl.java
+ * &#64;Date : 2020. 4. 7.
+ * &#64;프로그램 설명 : 관리자 > 레디플래너 관리 > 플래너 정산
+ * &#64;author upleat
+ * </pre>
+ */
+@Service("plannerPaymentService")
+public class PlannerPaymentServiceImpl implements PlannerPaymentService {
+
+    @Resource(name = "defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+
+    @Resource(name = "messageService")
+    private MessageService messageService;
+
+    /**
+     * <pre>
+     * 1. MethodName : selectPlannerPaymentListCount
+     * 2. ClassName  : PlannerPaymentServiceImpl.java
+     * 3. Comment    : 플래너 지급 목록 개수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 11.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerPaymentService#selectPlannerPaymentListCount(java.util.Map)
+     * @param commandMap
+     * @return
+     */
+    @Override
+    public int selectPlannerPaymentListCount(Map<String, Object> commandMap) {
+        return this.defaultDAO.selectCount("PlannerPayment.selectPlannerPaymentListCount", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectPlannerPaymentList
+     * 2. ClassName  : PlannerPaymentServiceImpl.java
+     * 3. Comment    : 플래너 지급 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 11.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerPaymentService#selectPlannerPaymentList(java.util.Map)
+     * @param commandMap
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<Map<String, Object>> selectPlannerPaymentList(Map<String, Object> commandMap) {
+        return this.defaultDAO.selectList("PlannerPayment.selectPlannerPaymentList", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : insertPaymentComplete
+     * 2. ClassName  : PlannerPaymentServiceImpl.java
+     * 3. Comment    : 지급 완료
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 11.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerPaymentService#insertPaymentComplete(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public int insertPaymentComplete(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("RMT_ORD_UPD_IP", IPUtil.getClientIP());
+        commandMap.put("RMT_ORD_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+
+        Map<String, Object> info = this.defaultDAO.select("PlannerPayment.selectPaymentAlimInfo", commandMap);
+        int result = this.defaultDAO.update("PlannerPayment.insertPaymentComplete", commandMap);
+
+        // 알림톡 발송
+        if (result > 0) {
+            String RDP_MST_HP = StringUtil.getString(info, "RDP_MST_HP");
+            String RDP_MST_MEM_NM = StringUtil.getString(info, "RDP_MST_MEM_NM");
+            String paymentYear = StringUtil.getString(commandMap, "paymentYear");
+            String paymentMonth = StringUtil.getString(commandMap, "paymentMonth");
+            int TOTAL_ALOW_AMT = StringUtil.getInt(info, "TOTAL_ALOW_AMT", 0);
+            String RDP_MST_BNK_CD_NM = StringUtil.getString(info, "RDP_MST_BNK_CD_NM");
+            String RDP_MST_BNK_ACT = StringUtil.getString(info, "RDP_MST_BNK_ACT", "");
+            String RDP_MST_ACT_HDR = StringUtil.getString(info, "RDP_MST_ACT_HDR", "");
+            // 지급 완료
+            this.messageService.sendAlimTalk(MessageType.PLANNER_PAYMENT_COMPLETE, RDP_MST_HP, RDP_MST_MEM_NM, paymentYear, paymentMonth, TOTAL_ALOW_AMT, RDP_MST_BNK_CD_NM, RDP_MST_BNK_ACT, RDP_MST_ACT_HDR);
+        }
+
+        return result;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : insertPaymentCompleteAll
+     * 2. ClassName  : PlannerPaymentServiceImpl.java
+     * 3. Comment    : 일괄 지급 완료
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 6. 11.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerPaymentService#insertPaymentCompleteAll(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public int insertPaymentCompleteAll(Map<String, Object> commandMap) throws Exception {
+        commandMap.put("RMT_ORD_UPD_IP", IPUtil.getClientIP());
+        commandMap.put("RMT_ORD_UPD_ID", SessionsManager.getSessionValue("ADM_MST_ID"));
+        int result = 0;
+        String PARAMS = StringUtil.getString(commandMap, "PARAMS", "");
+        if (!"".equals(PARAMS)) {
+
+            PARAMS = StringEscapeUtils.unescapeHtml4(PARAMS);
+
+            List<Map<String, Object>> paramList = JSONUtil.convJSONArrayToListMap(JSONUtil.convStringToJSONArray(PARAMS));
+            for (Map<String, Object> param : paramList) {
+                commandMap.put("RDP_MST_IDX", StringUtil.getString(param, "RDP_MST_IDX", ""));
+
+                Map<String, Object> info = this.defaultDAO.select("PlannerPayment.selectPaymentAlimInfo", commandMap);
+                int itemResult = this.defaultDAO.update("PlannerPayment.insertPaymentComplete", commandMap);
+
+                // 알림톡 & 앱 푸시 발송
+                if (itemResult > 0) {
+                    String RDP_MST_NO = StringUtil.getString(info, "RDP_MST_NO");
+                    String RDP_MST_HP = StringUtil.getString(info, "RDP_MST_HP");
+                    String RDP_MST_MEM_NM = StringUtil.getString(info, "RDP_MST_MEM_NM");
+                    String paymentYear = StringUtil.getString(commandMap, "paymentYear");
+                    String paymentMonth = StringUtil.getString(commandMap, "paymentMonth");
+                    int TOTAL_ALOW_AMT = StringUtil.getInt(info, "TOTAL_ALOW_AMT", 0);
+                    String RDP_MST_BNK_CD_NM = StringUtil.getString(info, "RDP_MST_BNK_CD_NM");
+                    String RDP_MST_BNK_ACT = StringUtil.getString(info, "RDP_MST_BNK_ACT", "");
+                    String RDP_MST_ACT_HDR = StringUtil.getString(info, "RDP_MST_ACT_HDR", "");
+                    // 지급 완료
+                    this.messageService.sendAlimTalk(MessageType.PLANNER_PAYMENT_COMPLETE, RDP_MST_HP, RDP_MST_MEM_NM, paymentYear, paymentMonth, TOTAL_ALOW_AMT, RDP_MST_BNK_CD_NM, RDP_MST_BNK_ACT, RDP_MST_ACT_HDR);
+                    this.messageService.sendAppPush(MessageType.PLANNER_PAYMENT_COMPLETE, RDP_MST_NO, RDP_MST_MEM_NM, paymentYear, paymentMonth, TOTAL_ALOW_AMT, RDP_MST_BNK_CD_NM, RDP_MST_BNK_ACT, RDP_MST_ACT_HDR);
+                }
+
+                result += itemResult;
+            }
+        }
+        return result;
+    }
+
+}

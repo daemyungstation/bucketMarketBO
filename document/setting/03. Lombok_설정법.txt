@@ -1,0 +1,16 @@
+#######################################################################
+############################## Lombok_설정법 ############################# 
+#######################################################################
+1. CMD 창을 열어 메이븐 설치 장소의 lombok 디렉토리로 이동 
+ex ) cd C:\Users\사용자\.m2\repository\org\projectlombok\lombok\1.18.8
+
+2. CMD 창에 해당 명령어 입력 
+java -jar lombok-1.18.8.jar
+
+3. Specify location.. 클릭 후 설치를 원하는 eclipse.exe 파일 선택
+
+4. Install/Update 클릭
+
+5. eclipse.init 파일에 javaagent 추가된 것 확인 후 이클립스 재 실행
+
+-javaagent:C:\project\bucketMarket\eclipse\lombok.jar

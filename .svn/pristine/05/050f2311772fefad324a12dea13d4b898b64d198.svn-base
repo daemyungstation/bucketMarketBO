@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="DashboardMain">
+    <!-- 대시보드 오늘상품가입 접수 현황  -->
+    <select id="selectSummaryTodayInfo" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectSummaryTodayInfo */
+        SELECT 
+                 NVL(SUM(DECODE(PRD_MST_TYPE,'${@common.code.Code@PRODUCT_TYPE_MONTHLY_SUPPORT}',CNT,0)),0)  AS MONTHLY_R
+                ,NVL(SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN,'${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'||'Y',CNT,0)),0)  AS IMMEDIATELY_Y_R
+                ,NVL(SUM(DECODE(PRD_MST_TYPE||PRD_MST_BND_YN,'${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'||'N',CNT,0)),0)  AS IMMEDIATELY_N_R
+                ,NVL(SUM(DECODE(PRD_MST_TYPE,'${@common.code.Code@PRODUCT_TYPE_MONTHLY_INSTALLMENT_PLAN}',CNT,0)),0)  AS INSTALLMENT_R
+                ,NVL(SUM(DECODE(PRD_MST_TYPE,'${@common.code.Code@PRODUCT_TYPE_RENTAL}',CNT,0)),0)  AS RENTAL_R
+        FROM (
+            SELECT 
+                 COUNT(OM.ORD_MST_IDX) AS CNT
+                ,CM.PRD_MST_TYPE
+                ,CM.PRD_MST_BND_YN
+            FROM T_ORD_MST OM, C_PRD_MST CM 
+            WHERE OM.PRD_MST_NO = CM.PRD_MST_NO
+            AND SUBSTR(ORD_MST_ORD_DT,0,8) =TO_CHAR(SYSDATE,'YYYYMMDD') 
+            GROUP BY PRD_MST_TYPE, PRD_MST_BND_YN
+        )
+    </select>
+
+    <!-- 대시보드 발주/지원혜택 누적 현황>포인트미지급  -->
+    <select id="selectUnpaidPointCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectUnpaidPointCount */
+        SELECT 
+            COUNT(CNT) AS CNT
+        FROM (
+            SELECT 
+                VOM.ORD_MST_IDX||VOD.PAY_DAY||VOD.PAY_NO AS CNT
+            FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+            WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PRD_MST_BND_YN = 'N'
+            AND CPM.PRD_MST_TYPE  <![CDATA[<>]]>  '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+            AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+            AND VOD.PAY_NO  <![CDATA[<=]]>   VPM.REL_CNT
+            AND VOD.ORD_BNF_YN = 'N'
+            <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+                AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+            </if>
+            UNION
+            SELECT 
+                VOM.ORD_MST_IDX||VOD.PAY_DAY||VOD.PAY_NO AS CNT
+            FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM, V_ORD_DPS VOD
+            WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PRD_MST_BND_YN = 'N'
+            AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+            AND OM.ORD_MST_IDX = VOD.ORD_MST_IDX
+            AND VPM.EXPR_NO = VOD.PAY_NO
+            AND VOD.ORD_BNF_YN = 'N'
+            <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+                AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+            </if>
+        ) S1
+    </select>
+        
+    <!-- 대시보드 발주/지원혜택 누적 현황>통화대기, 렌탈대기  -->
+    <select id="selectRentalStateByCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectRentalStateByCount */
+        SELECT 
+             SUM(DECODE(ORD_MST_VDR_APV,'${@common.code.Code@RENTAL_TM}', CNT,0)) AS RENTAL_TM
+            ,SUM(DECODE(ORD_MST_VDR_APV,'${@common.code.Code@RENTAL_READY}', CNT,0)) AS RENTAL_READY
+        FROM(
+            SELECT 
+                 COUNT(OM.ORD_MST_IDX) AS CNT
+                ,ORD_MST_VDR_APV
+            FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM
+            WHERE OM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND NOT EXISTS (SELECT OM.ORD_MST_IDX FROM V_ORD_MST VM WHERE OM.ORD_MST_IDX = VM.ORD_MST_IDX)
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_RENTAL}'
+            AND ORD_MST_VDR_APV IN ('${@common.code.Code@RENTAL_TM}','${@common.code.Code@RENTAL_READY}')
+            <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+                AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+            </if>
+            GROUP BY ORD_MST_VDR_APV
+        )
+    </select>
+
+    <!-- 대시보드 발주/지원혜택 누적 현황>배송준비  -->
+    <select id="selectDeliveryReadyCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectDeliveryReadyCount */
+        SELECT 
+            COUNT(ORD_MST_IDX) AS CNT
+        FROM (
+            SELECT 
+                VOM.ORD_MST_IDX
+            FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+            WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PRD_MST_BND_YN = 'Y'
+            AND CPM.PRD_MST_TYPE <![CDATA[<>]]> '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+            AND OM.ORD_MST_DLV_STATE = '${@common.code.Code@DELIVERY_READY}'
+            <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+                AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+            </if>
+            UNION
+            SELECT 
+                VOM.ORD_MST_IDX
+            FROM T_ORD_MST OM, T_ORD_DLCC OD, C_PRD_MST CPM, V_PRD_MST VPM, T_PRD_MST TPM, V_ORD_MST VOM
+            WHERE OM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND OM.ORD_MST_IDX = OD.ORD_MST_IDX
+            AND OM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND CPM.PRD_MST_BND_YN = 'Y'
+            AND CPM.PRD_MST_TYPE = '${@common.code.Code@PRODUCT_TYPE_IMMEDIATELY_ISSUE}'
+            AND VPM.EXPR_NO = (SELECT MAX(PAY_NO) FROM V_ORD_DPS OD WHERE OD.ORD_MST_IDX =OM.ORD_MST_IDX)
+            AND OM.ORD_MST_DLV_STATE = '${@common.code.Code@DELIVERY_READY}'
+            <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+                AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+            </if>
+        ) S1
+    </select>
+    
+    <!-- 대시보드 클레임 미처리 누적 현황> 해지신청  -->
+    <select id="selectClaimCancelCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectClaimCancelCount */
+        SELECT COUNT(CC.CLM_CCL_IDX)
+        FROM T_CLM_CCL CC, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        WHERE CC.ORD_MST_IDX = TOM.ORD_MST_IDX
+        AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND EXISTS (
+            SELECT *
+            FROM T_CMM_COM CC
+            WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+            AND CC.CMN_COM_IDX IN ('${@common.code.Code@MEMBER_JOIN_COMPLETE}', '${@common.code.Code@MEMBER_JOIN_CANCEL}')
+        )
+        AND CC.CMN_COM_IDX = '${@common.code.Code@CLAIM_PROGRESS_APPLY}'
+    </select>
+    
+    <!-- 대시보드 클레임 미처리 누적 현황> 라이프서비스 신청  -->
+    <select id="selectLifeServiceCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectLifeServiceCount */
+        SELECT COUNT(CL.CLM_LFS_IDX)
+        FROM T_CLM_LFS CL, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        WHERE CL.ORD_MST_IDX = TOM.ORD_MST_IDX
+        AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND EXISTS (
+            SELECT *
+            FROM T_CMM_COM CC
+            WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+            AND CC.CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_COMPLETE}'
+        )
+        AND CL.CMN_COM_IDX = '${@common.code.Code@CLAIM_PROGRESS_APPLY}'
+    </select>
+    
+    <!-- 대시보드 클레임 미처리 누적 현황> 양도/양수 신청  -->
+    <select id="selectTransferCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectTransferCount */
+        SELECT COUNT(CT.CLM_TRS_IDX)
+        FROM T_CLM_TRS CT, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        WHERE CT.ORD_MST_IDX = TOM.ORD_MST_IDX
+        AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND EXISTS (
+            SELECT *
+            FROM T_CMM_COM CC
+            WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+            AND CC.CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_COMPLETE}'
+        )
+        AND CT.CMN_COM_IDX = '${@common.code.Code@CLAIM_PROGRESS_APPLY}'
+    </select>
+    
+    <!-- 대시보드 클레임 미처리 누적 현황> 결제수단변경 신청  -->
+    <select id="selectPayMethodCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectPayMethodCount */
+        SELECT COUNT(CA.CLM_ACT_IDX)
+        FROM T_CLM_ACT CA, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        WHERE CA.ORD_MST_IDX = TOM.ORD_MST_IDX
+        AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+        AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+        AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+        AND EXISTS (
+            SELECT *
+            FROM T_CMM_COM CC
+            WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+            AND CC.CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_COMPLETE}'
+        )
+        AND CA.CMN_COM_IDX = '${@common.code.Code@CLAIM_PROGRESS_APPLY}'
+    </select>
+    
+    <!-- 지원혜택상품 미처리 누적 현황  -->
+    <select id="selectUnprocessedCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectUnprocessedCount */
+        SELECT COUNT(PRD_MST_CD)
+        FROM T_PRD_MST PM
+        WHERE  PRD_MST_APV_STATE = 'N'
+    </select>
+    
+    <!-- 레디플래너 미처리 누적 현황 > 승인대기, 해제요청 -->
+    <select id="selectReadyPlannerUnprocessedCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectReadyPlannerUnprocessedCount */
+        SELECT 
+             SUM(DECODE(RDP_MST_STATE,'${@common.code.Code@PLANNER_STATE_APPLY}',CNT,0)) AS READY_CNT
+            ,SUM(DECODE(RDP_MST_STATE,'${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE}',CNT,0)) AS CANCEL_CNT
+        FROM (
+            SELECT 
+                 NVL(COUNT(RDP_MST_IDX),0) CNT
+                ,RDP_MST_STATE
+            FROM T_RDP_MST
+            WHERE RDP_MST_STATE IN ('${@common.code.Code@PLANNER_STATE_APPLY}','${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE}')
+            GROUP BY RDP_MST_STATE
+        )
+    </select>
+    
+    <!-- 결합완료 상품 누적 현황 -->
+    <select id="selectUnionProductStateCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectUnionProductStateCount */
+        SELECT 
+             MAX(DECODE(PRD_MST_DPL_YN, 'Y', CNT, 0)) AS DPL_Y
+            ,MAX(DECODE(PRD_MST_DPL_YN, 'N', CNT, 0)) AS DPL_N
+            ,MAX(DECODE(PRD_MST_DPL_YN, 'S', CNT, 0)) AS DPL_S
+        FROM (
+            SELECT
+                 COUNT(CPM.PRD_MST_CD) CNT
+                ,PRD_MST_DPL_YN
+            FROM T_PRD_MST TPM, C_PRD_MST CPM, V_PRD_MST VPM
+            WHERE TPM.PRD_MST_CD = CPM.PRD_MST_CD
+            AND CPM.PROD_CD = VPM.PROD_CD
+            AND CPM.PROD_KIND = VPM.PROD_KIND
+            AND CPM.MODEL_CD = VPM.MODEL_CD
+            AND TPM.PRD_MST_APV_STATE = 'A'
+            AND CPM.PRD_MST_DEL_YN = 'N'
+            GROUP BY PRD_MST_DPL_YN
+        )
+    </select>
+    
+    <!-- 레디플래너 누적 현황 -->
+    <select id="selectReadyPlanerStateCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectReadyPlanerStateCount */
+        SELECT 
+             SUM(DECODE(TYPE,'W',CNT,0)) AS RDP_W
+            ,SUM(DECODE(TYPE,'N',CNT,0)) AS RDP_N
+            ,SUM(DECODE(TYPE,'S',CNT,0)) AS RDP_S
+        FROM (
+            SELECT 
+                 DECODE(RDP_MST_STATE,'${@common.code.Code@PLANNER_STATE_APPROVAL}','W','${@common.code.Code@PLANNER_STATE_INACTIVE}','W','${@common.code.Code@PLANNER_STATE_ACTIVE}','N','${@common.code.Code@PLANNER_STATE_STOP}','S','${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE}','S') AS TYPE
+                ,CNT
+            FROM (
+                SELECT
+                     NVL(COUNT(RDP_MST_IDX),0) CNT
+                     ,RDP_MST_STATE
+                FROM T_RDP_MST
+                WHERE RDP_MST_STATE IN ('${@common.code.Code@PLANNER_STATE_APPROVAL}','${@common.code.Code@PLANNER_STATE_INACTIVE}','${@common.code.Code@PLANNER_STATE_ACTIVE}','${@common.code.Code@PLANNER_STATE_STOP}','${@common.code.Code@PLANNER_STATE_REQUEST_RELEASE}')
+                GROUP BY RDP_MST_STATE
+            )
+        )
+    </select>
+    
+    <!-- 이벤트 현황 -->
+    <select id="selectEventStateCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectEventStateCount */
+        SELECT
+             COUNT(EVT_MST_IDX) AS TOTAL_CNT
+            ,SUM(DECODE(TO_CHAR(SYSDATE,'YYYYMMDD'),EVT_MST_ED_DT,1,0)) AS TODAY_END
+        FROM T_EVT_MST
+        WHERE  EVT_MST_USE_YN = 'Y'
+        AND SYSDATE BETWEEN TO_DATE(EVT_MST_ST_DT||EVT_MST_ST_HH||EVT_MST_ST_MI, 'YYYYMMDDHH24MI') AND TO_DATE(EVT_MST_ED_DT||EVT_MST_ED_HH||EVT_MST_ED_MI, 'YYYYMMDDHH24MI')
+    </select>
+    
+    <!-- 기획전 현황 -->
+    <select id="selectPlanStateCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectPlanStateCount */
+        SELECT
+             COUNT(PLN_MST_IDX) AS TOTAL_CNT
+            ,SUM(DECODE(TO_CHAR(SYSDATE,'YYYYMMDD'),PLN_MST_ED_DT,1,0)) AS TODAY_END
+        FROM T_PLN_MST
+        WHERE  PLN_MST_USE_YN = 'Y'
+         AND SYSDATE BETWEEN TO_DATE(PLN_MST_ST_DT||PLN_MST_ST_HH||PLN_MST_ST_MI, 'YYYYMMDDHH24MI') AND TO_DATE(PLN_MST_ED_DT||PLN_MST_ED_HH||PLN_MST_ED_MI, 'YYYYMMDDHH24MI')
+    </select>
+    
+    <!-- 상담/게시물 현황 > 상품QnA -->
+    <select id="selectProductQnACount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectProductQnACount */
+        SELECT 
+            COUNT(PRD_QNA_IDX)
+        FROM T_PRD_QNA PQ
+        JOIN C_PRD_MST CPM ON CPM.PRD_MST_NO = PQ.PRD_MST_NO
+        JOIN T_PRD_MST TPM ON TPM.PRD_MST_CD = CPM.PRD_MST_CD
+        JOIN T_VDR_MST VM ON VM.VDR_MST_IDX = TPM.VDR_MST_IDX 
+        JOIN V_PRD_MST VPM ON VPM.PROD_CD = CPM.PROD_CD AND VPM.PROD_KIND = CPM.PROD_KIND AND VPM.MODEL_CD = CPM.MODEL_CD
+        WHERE  PQ.PRD_QNA_RPL_YN = 'N'
+        <if test="ADM_MST_SUB_IDX != null and ADM_MST_SUB_IDX != ''">
+            AND TPM.VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+        </if>
+    </select>
+    
+    <!-- 상담/게시물 현황 > 1:1 문의 -->
+    <select id="selectInquiryCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectInquiryCount */
+        SELECT 
+            COUNT(MEM_ADV_IDX)
+        FROM T_MEM_ADV
+        WHERE MEM_ADV_RPL_YN = 'N'
+    </select>
+    
+    <!-- 상담/게시물 현황 > 제휴문의-->
+    <select id="selectContactUsCount" parameterType="HashMap" resultType="Integer">
+        /* DashboardMain.selectContactUsCount */
+        SELECT 
+            COUNT(CTT_US_IDX)
+        FROM T_CTT_US
+        WHERE CTT_US_REP_YN = 'N'
+    </select>
+    
+    <!-- SCM 제휴사 공지사항 -->
+    <select id="selectVendorNoticeBoardList" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectVendorNoticeBoardList */
+        SELECT
+            SCM_NTS_IDX,
+            SCM_NTS_TOP_YN,
+            VDR_MST_IDX,
+            SCM_NTS_TITLE,
+            SCM_NTS_USE_YN,
+            SCM_NTS_REG_NM,
+            SCM_NTS_REG_DT
+        FROM (
+            SELECT 
+                SCM_NTS_IDX,
+                SCM_NTS_TOP_YN,
+                VDR_MST_IDX,
+                SCM_NTS_TITLE,
+                SCM_NTS_USE_YN,
+                (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = SCM_NTS_REG_ID) AS SCM_NTS_REG_NM,
+                SCM_NTS_REG_DT
+            FROM T_SCM_NTS
+            WHERE NVL (VDR_MST_IDX, #{ADM_MST_SUB_IDX}) = #{ADM_MST_SUB_IDX}
+            AND SCM_NTS_USE_YN = 'Y'
+        ORDER BY SCM_NTS_TOP_YN DESC, SCM_NTS_REG_DT DESC
+        )
+        WHERE ROWNUM <![CDATA[<=]]> 5
+    </select>
+    
+    <!-- SCM > 승인/대기 상품 누적 현황 -->
+    <select id="selectVendorProductStateCount" parameterType="HashMap" resultType="HashMap">
+        /* DashboardMain.selectVendorProductStateCount */
+        SELECT
+            SUM(DECODE(PRD_MST_APV_STATE,'R', CNT,0)) CNT_R,
+            SUM(DECODE(PRD_MST_APV_STATE,'A', CNT,0)) CNT_A,
+            SUM(DECODE(PRD_MST_APV_STATE,'N', CNT,0)) CNT_N 
+        FROM(
+        SELECT 
+            COUNT(PRD_MST_CD) AS CNT, 
+            PRD_MST_APV_STATE
+        FROM T_PRD_MST
+        WHERE VDR_MST_IDX = #{ADM_MST_SUB_IDX}
+        GROUP BY PRD_MST_APV_STATE
+        )
+    </select>
+    
+</mapper>

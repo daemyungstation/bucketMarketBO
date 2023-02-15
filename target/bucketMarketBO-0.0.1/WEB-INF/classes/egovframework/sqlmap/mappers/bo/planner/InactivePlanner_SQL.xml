@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="InactivePlanner">
+       
+    <!-- 관리자 > 레디플래너 > 활동 대기 플래너 조건절 -->
+    <sql id="inactivePlannerWhere">
+        <bind name="PLANNER_STATE_APPROVAL" value="@common.code.Code@PLANNER_STATE_APPROVAL"/>
+        <bind name="PLANNER_STATE_INACTIVE" value="@common.code.Code@PLANNER_STATE_INACTIVE"/>
+        WHERE (
+            RDP_MST_STATE = #{PLANNER_STATE_APPROVAL} /* 승인 */ OR RDP_MST_STATE = #{PLANNER_STATE_INACTIVE} /* 활동대기 */
+        )
+        <!-- 승인일 -->
+        <if test="searchStartDate != null and searchStartDate != ''">
+            AND RDP_MST_UPD_DT <![CDATA[>=]]> REPLACE(#{searchStartDate},'-', '') ||'000000'
+        </if>
+        <if test="searchEndDate != null and searchEndDate != ''">
+            AND RDP_MST_UPD_DT <![CDATA[<=]]> REPLACE(#{searchEndDate},'-', '') ||'235959'
+        </if>
+        <!-- 이름 -->
+        <if test="searchRdpMstMemNm != null and searchRdpMstMemNm != ''">
+            AND RDP_MST_MEM_NM LIKE '%' || #{searchRdpMstMemNm} || '%'
+        </if>
+        <!-- 이메일주소 -->
+        <if test="searchRdpMstMail != null and searchRdpMstMail != ''">
+            AND RDP_MST_MAIL LIKE '%' || #{searchRdpMstMail} || '%'
+        </if>
+        <!-- 연락처 -->
+        <if test="searchRdpMstHp3 != null and searchRdpMstHp3 != ''">
+            AND RDP_MST_HP3 LIKE '%' || #{searchRdpMstHp3} || '%'
+        </if>
+        <!-- 소속 -->
+        <if test="searchRdpMstDmYn != null and searchRdpMstDmYn != ''">
+            AND RDP_MST_DM_YN = #{searchRdpMstDmYn}
+        </if>
+        <!-- 사번 -->
+        <if test="searchRdpMstDmNo != null and searchRdpMstDmNo != ''">
+            AND RDP_MST_DM_NO LIKE '%' || #{searchRdpMstDmNo} || '%'
+        </if>
+        <!-- 사업자유형 -->
+        <if test="searchRdpMstBusiCls != null and searchRdpMstBusiCls != ''">
+            AND RDP_MST_BUSI_CLS = #{searchRdpMstBusiCls}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 레디플래너 > 활동대기 플래너 목록 개수 -->
+    <select id="selectInactivePlannerListCount" parameterType="HashMap" resultType="Integer">
+        /* InactivePlanner.selectInactivePlannerListCount */ 
+        SELECT COUNT(RDP_MST_IDX) 
+        FROM T_RDP_MST
+        <include refid="inactivePlannerWhere" />
+    </select>
+    
+    <!-- 관리자 > 레디플래너 > 활동대기 플래너 목록 -->
+    <select id="selectInactivePlannerList" parameterType="HashMap" resultType="HashMap">
+        /* InactivePlanner.selectInactivePlannerList */
+        SELECT
+        
+            RNUM,
+            
+            RDP_MST_IDX,
+            RDP_MST_NO,
+            RDP_MST_ID,
+            RDP_MST_MEM_NM,
+            RDP_MST_DM_YN,
+            RDP_MST_DM_NO,
+            RDP_MST_MAIL,
+            RDP_MST_HP1,
+            RDP_MST_HP2,
+            RDP_MST_HP3,
+            RDP_MST_HP1 || '-' || RDP_MST_HP2 || '-' || RDP_MST_HP3 AS RDP_MST_HP,
+            RDP_MST_BUSI_CLS,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = RDP_MST_BUSI_CLS) AS RDP_MST_BUSI_CLS_NM,
+            RDP_MST_UPD_DT
+            
+        FROM (
+            SELECT
+                ROWNUM AS RNUM,
+                S1.*
+            FROM (
+                SELECT
+                    *
+                FROM T_RDP_MST
+                <include refid="inactivePlannerWhere"/>
+                ORDER BY RDP_MST_UPD_DT DESC
+            ) S1
+        ) S2
+        <if test="startNum != null and startNum != '' and endNum != null and endNum != ''">
+            WHERE RNUM BETWEEN #{startNum} AND #{endNum}
+        </if>
+    </select>
+    
+</mapper>

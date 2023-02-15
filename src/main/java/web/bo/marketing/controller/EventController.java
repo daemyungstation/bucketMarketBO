@@ -1,0 +1,268 @@
+package web.bo.marketing.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.model.Manager.ROLE_MANAGER;
+import common.model.Paging;
+import common.util.DateUtil;
+import common.util.StringUtil;
+import common.viewer.EXCEL;
+import common.viewer.JSON;
+import web.bo.marketing.service.EventService;
+
+/**
+ * @PackageName: web.bo.marketing.controller
+ * @FileName : EventController.java
+ * @Date : 2014. 4. 14.
+ * @프로그램 설명 : 관리자 > 프로모션 관리 > 이벤트 관리를 처리하는 Controller Class
+ * @author upleat
+ */
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class EventController {
+
+    @Resource(name="eventService")
+    private EventService eventService;
+    
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventList
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventList")
+    public ModelAndView eventList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+
+        int totalCount = eventService.selectEventListCount(commandMap);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("paging", new Paging(totalCount, commandMap));
+        if (totalCount > 0) {
+            // 공지사항 목록
+            mv.addObject("list", eventService.selectEventList(commandMap));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/marketing/eventList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventForm
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 등록 폼
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventForm")
+    public ModelAndView eventForm(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/marketing/eventForm");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventEdit
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 수정 폼
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventEdit")
+    public ModelAndView eventEdit(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addAllObjects(eventService.selectEventInfo(commandMap));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/marketing/eventEdit");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventReplyList
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 수정 폼 > 이벤트 댓글> 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventReplyList")
+    public ModelAndView eventReplyList(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        
+        Map<String, Object> param = new HashMap<>();
+        param.put("EVT_MST_IDX", StringUtil.getString(commandMap, "EVT_MST_IDX", ""));
+        param.put("cPage", StringUtil.getString(commandMap, "replyCPage", ""));
+        param.put("pageSize", StringUtil.getString(commandMap, "replyPageSize", ""));
+        param.put("searchEvtRplCts", StringUtil.getString(commandMap, "searchEvtRplCts", ""));
+        param.put("searchEvtRplUseYn", StringUtil.getString(commandMap, "searchEvtRplUseYn", ""));
+        param.put("searchEvtRplRegStDt", StringUtil.getString(commandMap, "searchEvtRplRegStDt", ""));
+        param.put("searchEvtRplRegEtDt", StringUtil.getString(commandMap, "searchEvtRplRegEtDt", ""));
+        
+        int totalCount = eventService.selectEventReplyListCount(param);
+        mv.addObject("totalCount", totalCount);
+        mv.addObject("paging", new Paging(totalCount, param));
+        if (totalCount > 0) {
+            // 공지사항 목록
+            mv.addObject("list", eventService.selectEventReplyList(param));
+        }
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/marketing/eventReplyList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventReplyExcelDownload
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 수정 폼 > 이벤트 댓글> 엑셀다운로드
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventReplyExcelDownload")
+    public EXCEL eventReplyExcelDownload(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        EXCEL excel = new EXCEL();
+        List<Map<String, Object>> list = this.eventService.selectEventReplyList(commandMap);
+        if (list != null) {
+            excel.put("fileName", "daemyung_evnet_reply_" + DateUtil.getCurrentDateTime());
+            String [] headerTitle = {"이름", "연락처", "댓글내용", "작성일", "마케팅수신동의", "노출"};
+            String [] cellField = {"EVT_RPL_NM", "EVT_RPL_HP", "EVT_RPL_CTS", "EVT_RPL_REG_DT", "EVT_RPL_MKT_YN", "EVT_RPL_USE_YN"};
+            String [] cellType = {"String", "String", "String", "String", "String", "String"};
+            String [] colSize = {"50", "80", "150", "80", "50", "50"};
+            excel.put("headerTitle", headerTitle);
+            excel.put("cellField", cellField);
+            excel.put("cellType", cellType);
+            excel.put("colSize", colSize);
+            excel.put("list", list);
+        }
+        return excel;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : eventRegist
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventRegist", method=RequestMethod.POST)
+    public ModelAndView eventRegist(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        int result = this.eventService.insertEvent((MultipartHttpServletRequest) request, commandMap);
+        if (result > 0) {
+            mv.addObject("alertMsg", "등록 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "등록에 실패하였습니다.");
+        }
+        mv.addObject("returnUrl", serverDomain + "/bo/marketing/eventList.do");
+        mv.setViewName("common/result");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventModify
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventModify", method=RequestMethod.POST)
+    public ModelAndView eventModify(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        int result = this.eventService.updateEvent((MultipartHttpServletRequest) request, commandMap);
+        if (result > 0) {
+            mv.addObject("alertMsg", "수정 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "수정에 실패하였습니다.");
+        }
+        mv.addObject("returnUrl", serverDomain + "/bo/marketing/eventList.do");
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("common/result");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : eventReplyModifyAjax
+     * 2. ClassName  : EventController.java
+     * 3. Comment    : 관리자 > 프로모션 관리 > 이벤트 > 상세 > 이벤트 댓글 > 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 2.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/marketing/eventReplyModifyAjax")
+    public JSON eventReplyModifyAjax(HttpServletRequest request, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        json.put("isSuccess", (eventService.updateEventReplyModify(commandMap) > 0));
+        return json;
+    }
+}

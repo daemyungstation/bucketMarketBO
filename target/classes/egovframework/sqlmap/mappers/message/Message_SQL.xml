@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="Message">
+
+    <!-- 알림톡 > 요청 -->
+    <insert id="insertAlimTalkRequest" parameterType="HashMap">
+        <selectKey keyProperty="MSGKEY" keyColumn="MSGKEY" order="BEFORE" resultType="Integer">
+            SELECT KKO_MSG_SEQ.NEXTVAL AS MSGKEY FROM DUAL
+        </selectKey>
+        /* Message.insertAlimTalkRequest */
+        INSERT INTO KKO_MSG (
+            MSGKEY,
+            SERIALNUM,
+            ID,
+            STATUS,
+            PHONE,
+            CALLBACK,
+            REQDATE,
+            MSG,
+            TEMPLATE_CODE,
+            PROFILE_KEY,
+            FAILED_TYPE,
+            FAILED_SUBJECT,
+            FAILED_MSG,
+            BUTTON_JSON
+        ) VALUES (
+            #{MSGKEY},
+            #{SERIALNUM},
+            #{ID},
+            '1',
+            #{PHONE},
+            #{CALLBACK},
+            SYSDATE,
+            #{MSG},
+            #{TEMPLATE_CODE},
+            #{PROFILE_KEY},
+            #{FAILED_TYPE},
+            #{FAILED_SUBJECT},
+            #{FAILED_MSG},
+            #{BUTTON_JSON}
+        )
+    </insert>
+    
+    <!-- 앱푸시 > 요청 -->
+    <insert id="insertFingerPushRequest" parameterType="HashMap">
+        /* Message.insertFingerPushRequest */
+        INSERT INTO T_AGPUSH_QUEUE (
+              QUEUEIDX
+            , APPKEY
+            , APPSECRET
+            , MSGTITLE
+            , MSGCONTENTS
+            , IDENTIFY
+            , PMODE
+            , BGCOLOR
+            , FONTCOLOR
+            , PLINK
+            , LABEL_CODE
+            , SENDDATE
+            , WDATE
+            , UDATE
+        ) VALUES (
+             T_AGPUSH_QUEUE_SEQ.NEXTVAL
+           , #{appkey}
+           , #{appsecret}
+           , #{msgtitle}
+           , #{msgcontents}
+           , #{identify}
+           , #{mode}
+           , NULL
+           , NULL
+           , #{link}
+           , #{labelCode}
+           , SYSTIMESTAMP
+           , SYSTIMESTAMP
+           , SYSTIMESTAMP
+        )
+    </insert>
+    
+</mapper>

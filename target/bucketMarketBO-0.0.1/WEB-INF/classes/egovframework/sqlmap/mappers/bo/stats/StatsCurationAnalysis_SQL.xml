@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="StatsCurationAnalysis">
+
+    <!-- 관리자 > 통계 > 큐레이션  -->
+    <select id="selectStatsCurationAnalysisList" parameterType="HashMap" resultType="HashMap">
+        /* StatsCurationAnalysis.selectStatsCurationAnalysisList */
+        SELECT DECODE(DAY, NULL, '합계', DAY) AS DAY,
+            CRT_MST_QST, CRT_KWD_SLT,
+            NVL(PC, 0) + NVL(MO, 0) + NVL(APP, 0) AS TOT,
+            NVL(PC, 0) AS PC, NVL(MO, 0) AS MO, NVL(APP, 0) AS APP
+        FROM (
+            SELECT 
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                    TO_CHAR(TO_DATE(REG_DT, 'YYYY-MM-DD'), 'YYYY-MM-DD') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                    TO_CHAR(TO_DATE(SUBSTR(REG_DT, 1, 6), 'YYYY-MM'), 'YYYY-MM') AS DAY,
+                </if>
+                <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                    SUBSTR(REG_DT, 1, 4) AS DAY,
+                </if>
+                CRT_MST_QST,
+                CRT_KWD_SLT,
+                SUM(DECODE(CRT_RCD_AGT, 'P', CNT, 0)) AS PC,
+                SUM(DECODE(CRT_RCD_AGT, 'M', CNT, 0)) AS MO,
+                SUM(DECODE(CRT_RCD_AGT, 'A', CNT, 0)) AS APP
+            FROM (
+                SELECT 
+                    SUBSTR(CRT_RCD_REG_DT,0,8) REG_DT,
+                    CRT_MST_QST,
+                    CRT_KWD_SLT,
+                    CRT_RCD_AGT,
+                    COUNT(1) AS CNT
+                FROM T_CRT_RCD
+                WHERE CRT_RCD_REG_DT BETWEEN REPLACE(#{searchStartDate}, '-', '') || '000000' AND REPLACE(#{searchEndDate}, '-', '') || '235959'
+                GROUP BY CRT_MST_QST, CRT_KWD_SLT, CRT_RCD_AGT, SUBSTR(CRT_RCD_REG_DT,0,8)
+            ) 
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_DAY)">
+                GROUP BY ROLLUP(REG_DT, CRT_MST_QST, CRT_KWD_SLT)
+                HAVING GROUPING_ID(REG_DT, CRT_MST_QST, CRT_KWD_SLT) IN (0, 7)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_MONTH)">
+                GROUP BY ROLLUP(SUBSTR(REG_DT, 1, 6), CRT_MST_QST, CRT_KWD_SLT)
+                HAVING GROUPING_ID(SUBSTR(REG_DT, 1, 6), CRT_MST_QST, CRT_KWD_SLT) IN (0, 7)
+            </if>
+            <if test="searchPeriod != null and searchPeriod.equals(@common.code.Const@PERIOD_YEAR)">
+                GROUP BY ROLLUP(SUBSTR(REG_DT, 1, 4), CRT_MST_QST, CRT_KWD_SLT)
+                HAVING GROUPING_ID(SUBSTR(REG_DT, 1, 4), CRT_MST_QST, CRT_KWD_SLT) IN (0, 7)
+            </if>
+        ) R
+        ORDER BY DAY, CRT_MST_QST, CRT_KWD_SLT
+    </select>
+</mapper>

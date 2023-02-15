@@ -1,0 +1,231 @@
+package web.bo.display.controller;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.servlet.ModelAndView;
+
+import common.annotation.AccessLevel;
+import common.annotation.RequestParams;
+import common.model.Manager.ROLE_MANAGER;
+import common.util.JSONUtil;
+import common.util.StringUtil;
+import common.viewer.JSON;
+import web.bo.common.service.CommonService;
+import web.bo.display.service.BannerDisplayService;
+
+/**
+ * @PackageName: web.bo.display.controller
+ * @FileName : BannerDisplayController.java
+ * @Date : 2014. 4. 17.
+ * @프로그램 설명 : 관리자 > 전시관리 > 전시배너관리를 처리하는 Controller Class
+ * @author upleat
+ */
+@Controller
+@AccessLevel(ROLE_MANAGER.administrator)
+public class BannerDisplayController {
+
+    @Resource(name="bannerDisplayService")
+    private BannerDisplayService bannerDisplayService;
+
+    @Resource(name="commonService")
+    private CommonService commonService;
+    
+    @Value("#{resource['server.ssl.domain']}")
+    private String serverDomain;
+
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayView
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2014. 4. 17.
+     * </pre>
+     *
+     * @param request
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayView")
+    public ModelAndView bannerDisplayView(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addObject("list", commonService.selectHierarchyCodeList("DSPLAY_BANNER_AREA_CODE"));
+        mv.addObject("data", JSONUtil.convJSONObjectToString(JSONUtil.convMapToJSONObject(commandMap)));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/display/bannerDisplayView");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : productDisplayList
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayList")
+    public ModelAndView bannerDisplayList(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        if (!"".equals(StringUtil.getString(commandMap.get("CMN_COM_IDX"), ""))) {
+            // 배너관리 목록
+            mv.addObject("list", bannerDisplayService.selectBannerDisplayList(commandMap));
+            mv.addObject("commandMap", commandMap);
+        }
+        mv.setViewName("bo/display/bannerDisplayList");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayForm
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 등록 폼
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayForm")
+    public ModelAndView bannerDisplayForm(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        mv.addObject("cateList", bannerDisplayService.selectProductCategoryList(commandMap));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/display/bannerDisplayForm");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayEdit
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 수정 폼
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayEdit")
+    public ModelAndView bannerDisplayEdit(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 배너관리 상세
+        mv.addAllObjects(bannerDisplayService.selectBannerDisplayInfo(commandMap));
+        mv.addObject("cateList", bannerDisplayService.selectProductCategoryList(commandMap));
+        mv.addObject("commandMap", commandMap);
+        mv.setViewName("bo/display/bannerDisplayEdit");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayRegist
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayRegist")
+    public ModelAndView bannerDisplayRegist(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 배너관리 등록
+        int result = bannerDisplayService.insertBannerDisplay((MultipartHttpServletRequest) request, commandMap);
+        // view Page Info
+        if (result > 0) {
+            mv.addObject("alertMsg", "등록 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "등록에 실패하였습니다.");
+        }
+        mv.addObject("commandMap", commonService.selectCodeInfo(commandMap));
+        mv.addObject("returnUrl", serverDomain + "/bo/display/bannerDisplayView.do");
+        mv.setViewName("common/result");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayModify
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayModify")
+    public ModelAndView bannerDisplayModify(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        ModelAndView mv = new ModelAndView();
+        // 배너관리 수정
+        int result = bannerDisplayService.updateBannerDisplay((MultipartHttpServletRequest) request, commandMap);
+        // view Page Info
+        if (result > 0) {
+            mv.addObject("alertMsg", "수정 되었습니다.");
+        } else {
+            mv.addObject("alertMsg", "수정에 실패하였습니다.");
+        }
+        mv.addObject("commandMap", commonService.selectCodeInfo(commandMap));
+        mv.addObject("returnUrl", serverDomain + "/bo/display/bannerDisplayView.do");
+        mv.setViewName("common/result");
+        return mv;
+    }
+    
+    /**
+     * <pre>
+     * 1. MethodName : bannerDisplayModifyAjax
+     * 2. ClassName  : BannerDisplayController.java
+     * 3. Comment    : 관리자 > 전시관리 > 배너관리 > 순서 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 3. 26.
+     * </pre>
+     *
+     * @param request
+     * @param response
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/bo/display/bannerDisplayModifyAjax")
+    public JSON bannerDisplayModifyAjax(HttpServletRequest request, HttpServletResponse response, @RequestParams Map<String, Object> commandMap) throws Exception {
+        JSON json = new JSON();
+        // 배너관리 수정
+        json.put("isSuccess", (bannerDisplayService.updateBannerDisplay(commandMap) > 0));
+        return json;
+    }
+}

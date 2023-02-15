@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="TermManager">
+    <!-- 관리자 > 기준정보 > 이용약관 검색조건-->
+    <sql id="termManagerWhere">
+        WHERE AGR_MST_TYPE = #{CMN_COM_IDX}
+        <if test="searchAgrMstGbn != null and searchAgrMstGbn != ''">
+            AND AGR_MST_GBN = #{searchAgrMstGbn}
+        </if>
+        <if test="searchWord != null and searchWord != ''">
+            <choose>
+                <when test="searchType != null and searchType.equals('S_TITLE'.toString())">
+                    AND AGR_MST_TITLE LIKE '%' || #{searchWord} || '%'
+                </when>
+                <when test="searchType != null and searchType.equals('S_CONTENTS'.toString())">
+                    AND DBMS_LOB.INSTR(AGR_MST_CONTENTS, #{searchWord}) > 0
+                </when>
+                <when test="searchType != null and searchType.equals('S_REG_NM'.toString())">
+                    AND EXISTS (
+                        SELECT *
+                        FROM T_ADM_MST
+                        WHERE ADM_MST_ID = AGR_MST_REG_ID
+                            AND ADM_MST_NM = #{searchWord}
+                    )
+                </when>
+            </choose>
+        </if>
+        <if test="searchAgrMstUseYn != null and searchAgrMstUseYn != ''">
+            AND AGR_MST_USE_YN = #{searchAgrMstUseYn}
+        </if>
+    </sql>
+    
+    <!-- 관리자 > 기준정보 > 이용약관 목록 개수-->
+    <select id="selectTermManagerListCount" parameterType="HashMap" resultType="Integer">
+        /*TermManager.selectTermManagerListCount */
+        SELECT COUNT(AGR_MST_IDX)
+        FROM T_AGR_MST
+        <include refid="termManagerWhere"/>
+    </select>
+    
+    <!-- 관리자 > 기준정보 > 이용약관 목록 -->
+    <select id="selectTermManagerList" parameterType="HashMap" resultType="HashMap">
+        /*TermManager.selectTermManagerList */
+        SELECT S2.*,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = S2.AGR_MST_GBN) AS AGR_MST_GBN_NM,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = S2.AGR_MST_REG_ID) AS AGR_MST_REG_NM
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM ( 
+                SELECT
+                    AGR_MST_IDX,
+                    AGR_MST_GBN,
+                    AGR_MST_PRD_NO,
+                    AGR_MST_CRT_DAY,
+                    AGR_MST_USE_YN,
+                    AGR_MST_TITLE,
+                    AGR_MST_REG_DT,
+                    AGR_MST_REG_ID
+                FROM T_AGR_MST
+                <include refid="termManagerWhere"/>
+                ORDER BY AGR_MST_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 기준정보 > 이용약관 상세조회 -->
+    <resultMap id="resultTermManagerInfo" type="HashMap">
+        <result column="AGR_MST_IDX" property="AGR_MST_IDX" />
+        <result column="AGR_MST_TYPE" property="AGR_MST_TYPE" />
+        <result column="AGR_MST_GBN" property="AGR_MST_GBN" />
+        <result column="AGR_MST_PRD_NO" property="AGR_MST_PRD_NO" />
+        <result column="AGR_MST_CRT_DAY" property="AGR_MST_CRT_DAY" />
+        <result column="AGR_MST_USE_YN" property="AGR_MST_USE_YN" />
+        <result column="AGR_MST_TITLE" property="AGR_MST_TITLE" />
+        <result column="AGR_MST_CONTENTS" property="AGR_MST_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="AGR_MST_PRE_YN" property="AGR_MST_PRE_YN" />
+        <result column="AGR_MST_REG_DT" property="AGR_MST_REG_DT" />
+        <result column="AGR_MST_REG_ID" property="AGR_MST_REG_ID" />
+        <result column="AGR_MST_UPD_DT" property="AGR_MST_UPD_DT" />
+        <result column="AGR_MST_UPD_ID" property="AGR_MST_UPD_ID" />
+    </resultMap>
+    <select id="selectTermManagerInfo" parameterType="HashMap" resultMap="resultTermManagerInfo">
+        /*TermManager.selectTermManagerInfo */
+        SELECT
+            AGR_MST_IDX,
+            AGR_MST_TYPE,
+            AGR_MST_GBN,
+            AGR_MST_PRD_NO,
+            AGR_MST_CRT_DAY,
+            AGR_MST_USE_YN,
+            AGR_MST_TITLE,
+            AGR_MST_CONTENTS,
+            AGR_MST_PRE_YN,
+            AGR_MST_REG_DT,
+            AGR_MST_REG_ID,
+            AGR_MST_UPD_DT,
+            AGR_MST_UPD_ID
+        FROM T_AGR_MST
+        WHERE AGR_MST_IDX = #{AGR_MST_IDX}
+    </select>
+    
+    <!--  관리자 > 기준정보 > 이용약관 등록 -->
+    <insert id="insertTermManager" parameterType="HashMap">
+        /*TermManager.insertTermManager */
+        INSERT INTO T_AGR_MST(
+            AGR_MST_IDX,
+            AGR_MST_TYPE,
+            AGR_MST_GBN,
+            AGR_MST_PRD_NO,
+            AGR_MST_CRT_DAY,
+            AGR_MST_USE_YN,
+            AGR_MST_TITLE,
+            AGR_MST_CONTENTS,
+            AGR_MST_PRE_YN,
+            AGR_MST_REG_DT,
+            AGR_MST_REG_IP,
+            AGR_MST_REG_ID
+        ) VALUES (
+            SEQ_AGR_MST_IDX.NEXTVAL,
+            #{AGR_MST_TYPE},
+            #{AGR_MST_GBN},
+            #{AGR_MST_PRD_NO},
+            REPLACE(#{AGR_MST_CRT_DAY}, '-', '') || '000000',
+            NVL(#{AGR_MST_USE_YN}, 'N'),
+            #{AGR_MST_TITLE},
+            #{AGR_MST_CONTENTS:CLOB},
+            NVL(#{AGR_MST_PRE_YN}, 'N'),
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{AGR_MST_REG_IP},
+            #{AGR_MST_REG_ID}
+        )
+    </insert>
+    
+    <!-- 관리자 > 기준정보 > 이용약관 수정 -->
+    <update id="updateTermManager" parameterType="HashMap">
+        /*TermManager.updateTermManager */
+        UPDATE T_AGR_MST SET
+            AGR_MST_USE_YN = NVL(#{AGR_MST_USE_YN}, 'N'),
+            AGR_MST_TITLE = #{AGR_MST_TITLE},
+            AGR_MST_CONTENTS = #{AGR_MST_CONTENTS:CLOB},
+            AGR_MST_PRE_YN = NVL(#{AGR_MST_PRE_YN}, 'N'),
+            AGR_MST_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            AGR_MST_UPD_IP = #{AGR_MST_UPD_IP},
+            AGR_MST_UPD_ID = #{AGR_MST_UPD_ID}
+        WHERE AGR_MST_IDX = #{AGR_MST_IDX}
+    </update>
+</mapper>

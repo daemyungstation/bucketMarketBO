@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="103" height="103" viewBox="0 0 103 103">
+  <g id="ic_레디플래너관리" transform="translate(-551 -434)">
+    <rect id="사각형_1794" data-name="사각형 1794" width="103" height="103" transform="translate(551 434)" fill="none"/>
+    <g id="그룹_140" data-name="그룹 140" transform="translate(-500.03 1506.298)">
+      <g id="그룹_138" data-name="그룹 138">
+        <path id="패스_1174" data-name="패스 1174" d="M1126.107-1014.587a23.311,23.311,0,0,1-4.1,13.222,23.376,23.376,0,0,1-19.284,10.158,23.374,23.374,0,0,1-19.284-10.158,23.3,23.3,0,0,1-4.1-13.222,23.382,23.382,0,0,1,23.38-23.379A23.381,23.381,0,0,1,1126.107-1014.587Z" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+        <circle id="타원_114" data-name="타원 114" cx="7.168" cy="7.168" r="7.168" transform="translate(1095.56 -1029.72)" stroke-width="3" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path id="패스_1175" data-name="패스 1175" d="M1122.012-1001.365a23.376,23.376,0,0,1-19.284,10.158,23.374,23.374,0,0,1-19.284-10.158,11.93,11.93,0,0,1,11.581-9.018h15.405A11.931,11.931,0,0,1,1122.012-1001.365Z" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      </g>
+      <g id="그룹_139" data-name="그룹 139">
+        <rect id="사각형_1797" data-name="사각형 1797" width="93.394" height="68.823" transform="translate(1056.03 -1048.347)" stroke-width="3" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path id="패스_1176" data-name="패스 1176" d="M1091.3-1061.3H1056.03v12.95h46.7Z" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      </g>
+    </g>
+  </g>
+</svg>

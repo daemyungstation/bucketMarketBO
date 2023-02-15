@@ -1,0 +1,10 @@
+################################################################################
+############################## TOMCAT PROFILE 설정법 ############################## 
+################################################################################
+
+1. 프로젝트 우클릭  > Run As > Run Configurations.. Click
+2. Arguments Tab > VM Agruments Text Area에 -Dspring.profiles.active="local" 삽입
+
+local = 개발환경
+dev = 개발환경 (Tomcat 환경의 catalina.sh에 정의되어 있음)
+prd = 실환경 (Tomcat 환경의 catalina.sh에 정의되어 있음)

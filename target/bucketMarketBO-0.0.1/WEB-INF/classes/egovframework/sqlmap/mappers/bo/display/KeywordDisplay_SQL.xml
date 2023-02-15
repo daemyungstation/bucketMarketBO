@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="KeywordDisplay">
+
+    <!-- 관리자 > 전시관리 > 인기키워드 관리 > 목록 -->
+    <select id="selectKeywordDisplayList" parameterType="hashMap" resultType="hashMap">
+        /* KeywordDisplay.selectKeywordDisplayList */
+        SELECT
+            PPL_WRD_IDX,
+            PPL_WRD_TEXT,
+            PPL_WRD_SORT,
+            PPL_WRD_SCH,
+            PPL_WRD_URL
+        FROM T_PPL_WRD
+        ORDER BY PPL_WRD_SORT
+    </select>
+
+    <!-- 관리자 > 전시관리 > 인기키워드 관리 > 등록 -->
+    <update id="mergeKeywordDisplay" parameterType="hashMap">
+        <selectKey keyProperty="PPL_WRD_IDX" keyColumn="PPL_WRD_IDX" resultType="Integer" order="BEFORE">
+            <choose>
+                <when test="PPL_WRD_IDX != null and PPL_WRD_IDX != ''">
+                    SELECT #{PPL_WRD_IDX} AS PPL_WRD_IDX FROM DUAL
+                </when>
+                <otherwise>
+                    SELECT SEQ_PPL_WRD_IDX.NEXTVAL AS PPL_WRD_IDX FROM DUAL
+                </otherwise>
+            </choose>
+        </selectKey>
+        /* KeywordDisplay.mergeKeywordDisplay */
+        MERGE INTO T_PPL_WRD USING DUAL
+        ON (PPL_WRD_IDX = #{PPL_WRD_IDX})
+        WHEN MATCHED THEN
+            UPDATE SET
+                PPL_WRD_TEXT = #{PPL_WRD_TEXT},
+                PPL_WRD_SORT = #{PPL_WRD_SORT},
+                PPL_WRD_SCH = #{PPL_WRD_SCH},
+                PPL_WRD_URL = #{PPL_WRD_URL},
+                PPL_WRD_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                PPL_WRD_UPD_IP = #{PPL_WRD_UPD_IP},
+                PPL_WRD_UPD_ID = #{PPL_WRD_UPD_ID}
+        WHEN NOT MATCHED THEN
+            INSERT (
+                PPL_WRD_IDX,
+                PPL_WRD_TEXT,
+                PPL_WRD_SORT,
+                PPL_WRD_SCH,
+                PPL_WRD_URL,
+                PPL_WRD_REG_DT,
+                PPL_WRD_REG_IP,
+                PPL_WRD_REG_ID
+            ) VALUES (
+                #{PPL_WRD_IDX},
+                #{PPL_WRD_TEXT},
+                #{PPL_WRD_SORT},
+                #{PPL_WRD_SCH},
+                #{PPL_WRD_URL},
+                TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+                #{PPL_WRD_REG_IP},
+                #{PPL_WRD_REG_ID}
+            )
+    </update>
+    
+    <!-- 관리자 > 전시관리 > 인기키워드 관리 > 이력 등록 -->
+    <insert id="insertKeywordDisplayHistory" parameterType="HashMap">
+        /* KeywordDisplay.insertKeywordDisplayHistory */
+        INSERT INTO T_PPL_WRD_HIS (
+            PPL_WRD_HIS_IDX,
+            PPL_WRD_HIS_TEXT,
+            PPL_WRD_HIS_SORT,
+            PPL_WRD_HIS_SCH,
+            PPL_WRD_HIS_URL,
+            PPL_WRD_HIS_REG_DT,
+            PPL_WRD_HIS_REG_IP,
+            PPL_WRD_HIS_REG_ID
+        ) VALUES (
+            SEQ_PPL_WRD_HIS_IDX.NEXTVAL,
+            #{PPL_WRD_TEXT},
+            #{PPL_WRD_SORT},
+            #{PPL_WRD_SCH},
+            #{PPL_WRD_URL},
+            TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            #{PPL_WRD_HIS_REG_IP},
+            #{PPL_WRD_HIS_REG_ID}
+        )
+    </insert>
+    
+</mapper>

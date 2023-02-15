@@ -1,0 +1,174 @@
+package web.bo.planner.service.impl;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import common.dao.CommonDefaultDAO;
+import common.model.Manager;
+import common.session.SessionsManager;
+import common.util.StringUtil;
+import web.bo.common.service.CommonFileService;
+import web.bo.planner.service.PlannerNoticeService;
+
+/**
+ * <pre>
+ * &#64;PackageName: web.bo.planner.service.impl
+ * &#64;FileName : PlannerNoticeServiceImpl.java
+ * &#64;Date : 2020. 4. 7.
+ * &#64;프로그램 설명 : 관리자 > 레디플래너 관리 > 공지사항 관리
+ * &#64;author upleat
+ * </pre>
+ */
+@Service("plannerNoticeService")
+public class PlannerNoticeServiceImpl implements PlannerNoticeService {
+
+    @Resource(name = "defaultDAO")
+    private CommonDefaultDAO defaultDAO;
+
+    @Resource(name = "commonFileService")
+    private CommonFileService commonFileService;
+
+    private static final String UPLOAD_PATH = "planner";
+    private static final String UPLOAD_ALLOW = "default";
+    private static final String UPLOAD_DATE_FOLDER_FLAG = "Y";
+
+    /**
+     * <pre>
+     * 1. MethodName : selectNoticeListCount
+     * 2. ClassName  : PlannerNoticeServiceImpl.java
+     * 3. Comment    : 관리자 > 레디플래너 관리 > 공지사항 > 목록 개수
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 14.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerNoticeService#selectNoticeListCount(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public int selectNoticeListCount(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectCount("PlannerNotice.selectNoticeListCount", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectNoticeList
+     * 2. ClassName  : PlannerNoticeServiceImpl.java
+     * 3. Comment    : 관리자 > 레디플래너 관리 > 공지사항 > 목록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 14.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerNoticeService#selectNoticeList(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<Map<String, Object>> selectNoticeList(Map<String, Object> commandMap) throws Exception {
+        return defaultDAO.selectList("PlannerNotice.selectNoticeList", commandMap);
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : selectNoticeInfo
+     * 2. ClassName  : PlannerNoticeServiceImpl.java
+     * 3. Comment    : 관리자 > 레디플래너 관리 > 공지사항 > 상세조회
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 14.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerNoticeService#selectNoticeInfo(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public Map<String, Object> selectNoticeInfo(Map<String, Object> commandMap) throws Exception {
+        Map<String, Object> returnMap = new HashMap<String, Object>();
+
+        // 파일
+        commandMap.put("CMM_FLE_TB_NM", "T_RDP_NTS");
+        commandMap.put("CMM_FLE_TB_PK", StringUtil.getString(commandMap.get("RDP_NTS_IDX"), ""));
+        returnMap.put("fileList", commonFileService.selectCommonFileList(commandMap));
+
+        // 조회
+        returnMap.put("info", defaultDAO.select("PlannerNotice.selectNoticeInfo", commandMap));
+        // defaultDAO.update("PlannerNotice.updateReadCount", commandMap);
+
+        return returnMap;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : insertNotice
+     * 2. ClassName  : PlannerNoticeServiceImpl.java
+     * 3. Comment    : 관리자 > 레디플래너 관리 > 공지사항 > 등록
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 14.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerNoticeService#insertNotice(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public int insertNotice(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        Manager manager = SessionsManager.getSessionManager(request);
+        commandMap.put("RDP_NTS_REG_IP", request.getRemoteAddr());
+        commandMap.put("RDP_NTS_REG_ID", manager.getADM_MST_ID());
+
+        // 등록
+        int result = defaultDAO.insert("PlannerNotice.insertNotice", commandMap);
+
+        // 파일 업로드
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "T_RDP_NTS");
+        commandMap.put("CMM_FLE_TB_PK", StringUtil.getString(commandMap.get("RDP_NTS_IDX"), ""));
+        result += commonFileService.insertCommonFileList(request, commandMap, UPLOAD_PATH, UPLOAD_ALLOW, UPLOAD_DATE_FOLDER_FLAG);
+
+        return result;
+    }
+
+    /**
+     * <pre>
+     * 1. MethodName : updateNotice
+     * 2. ClassName  : PlannerNoticeServiceImpl.java
+     * 3. Comment    : 관리자 > 레디플래너 관리 > 공지사항 > 수정
+     * 4. 작성자       : upleat
+     * 5. 작성일       : 2020. 4. 14.
+     * </pre>
+     *
+     * @see web.bo.planner.service.PlannerNoticeService#updateNotice(java.util.Map)
+     * @param commandMap
+     * @return
+     * @throws Exception
+     */
+    @Override
+    public int updateNotice(MultipartHttpServletRequest request, Map<String, Object> commandMap) throws Exception {
+        Manager manager = SessionsManager.getSessionManager(request);
+        commandMap.put("RDP_NTS_UPD_IP", request.getRemoteAddr());
+        commandMap.put("RDP_NTS_UPD_ID", manager.getADM_MST_ID());
+
+        // 수정
+        int result = defaultDAO.update("PlannerNotice.updateNotice", commandMap);
+
+        // 파일 업로드
+        commandMap.put("CMM_CLE_NM", "FILE");
+        commandMap.put("CMM_FLE_TB_NM", "T_RDP_NTS");
+        commandMap.put("CMM_FLE_TB_PK", StringUtil.getString(commandMap.get("RDP_NTS_IDX"), ""));
+        commonFileService.updateCommonFileList(request, commandMap, UPLOAD_PATH, UPLOAD_ALLOW, UPLOAD_DATE_FOLDER_FLAG);
+
+        return result;
+    }
+
+}

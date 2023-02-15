@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="Transfer">
+    <!-- 관리자 > 클레임 상담 조회 > 양도/양수 신청 > 조건절 -->
+    <sql id="transferWhere">
+        WHERE CT.ORD_MST_IDX = TOM.ORD_MST_IDX
+            AND TOM.ORD_MST_IDX = VOM.ORD_MST_IDX
+            AND TOM.PRD_MST_NO = CPM.PRD_MST_NO
+            AND CPM.PRD_MST_CD = TPM.PRD_MST_CD
+            AND EXISTS (
+                SELECT *
+                FROM T_CMM_COM CC
+                WHERE CC.CMN_COM_ETC1 = VOM.KSTBIT
+                    AND CC.CMN_COM_IDX = '${@common.code.Code@MEMBER_JOIN_COMPLETE}'
+            )
+        <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+            AND CT.CLM_TRS_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+        </if>
+        <if test="searchAccntNo != null and searchAccntNo != ''">
+            AND VOM.ACCNT_NO = #{searchAccntNo}
+        </if>
+        <if test="searchMemNm != null and searchMemNm != ''">
+            AND VOM.MEM_NM = #{searchMemNm} 
+        </if>
+        <if test="searchCell != null and searchCell != ''">
+            AND SUBSTR(VOM.CELL, -4) = #{searchCell}
+        </if>
+        <if test="searchCmnComIdx != null and searchCmnComIdx != ''">
+            AND CT.CMN_COM_IDX = #{searchCmnComIdx}
+        </if>
+    </sql>
+
+    <!-- 관리자 > 클레임 상담 조회 > 양도/양수 신청 > 목록 개수 -->
+    <select id="selectTransferListCount" parameterType="HashMap" resultType="Integer">
+        /* Transfer.selectTransferListCount */
+        SELECT COUNT(CT.CLM_TRS_IDX)
+        FROM T_CLM_TRS CT, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+        <include refid="transferWhere"/>
+    </select>
+    <!-- 관리자 > 클레임 상담 조회 > 양도/양수 신청 > 목록 -->
+    <select id="selectTransferList" parameterType="HashMap" resultType="HashMap">
+        /* Transfer.selectTransferList */
+        SELECT S3.*,
+            S3.EXPR_CNT - S3.TRUE_CNT AS REMAINDER_CNT
+        FROM (
+            SELECT
+                S2.*,
+                (SELECT CC.CMN_COM_NM FROM T_CMM_COM CC WHERE CC.CMN_COM_IDX = S2.CMN_COM_IDX) AS CMN_COM_NM,
+                NVL((SELECT MAX(VOD.PAY_NO) FROM V_ORD_DTL VOD WHERE VOD.ORD_MST_IDX = S2.ORD_MST_IDX), 0) AS TRUE_CNT,
+                NVL(VPM.EXPR_NO, 0) AS EXPR_CNT,
+                VPM.MODEL_NM
+            FROM (
+                SELECT S1.*,
+                    ROWNUM AS RNUM
+                FROM (
+                    SELECT
+                        CT.CLM_TRS_IDX,
+                        TOM.ORD_MST_IDX,
+                        VOM.ACCNT_NO,
+                        CPM.PRD_MST_NO,
+                        CPM.PRD_MST_NM,
+                        VOM.MEM_NM,
+                        VOM.CELL,
+                        VOM.PROD_CD,
+                        VOM.PROD_KIND,
+                        VOM.MODEL_CD,
+                        TPM.PRD_MST_SPL_NM,
+                        TPM.PRD_MST_MD,
+                        CT.CLM_TRS_REG_DT,
+                        CT.CMN_COM_IDX
+                    FROM T_CLM_TRS CT, T_ORD_MST TOM, V_ORD_MST VOM, C_PRD_MST CPM, T_PRD_MST TPM
+                    <include refid="transferWhere"/>
+                    ORDER BY CT.CLM_TRS_REG_DT DESC
+                ) S1
+                <if test="endNum != null and endNum != ''">
+                    WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+                </if>
+            ) S2, V_PRD_MST VPM
+            WHERE S2.PROD_CD = VPM.PROD_CD
+                AND S2.PROD_KIND = VPM.PROD_KIND 
+                AND S2.MODEL_CD = VPM.MODEL_CD
+            <if test="startNum != null and startNum != ''">
+                AND S2.RNUM <![CDATA[>=]]> #{startNum}
+            </if>
+        ) S3
+    </select>
+    <!-- 관리자 > 클레임 상담 조회 > 양도/양수 신청 > 수정 -->
+    <update id="updateTransfer" parameterType="HashMap">
+        /* Transfer.updateTransfer */
+        UPDATE T_CLM_TRS SET
+            CMN_COM_IDX = #{CMN_COM_IDX},
+            CLM_TRS_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            CLM_TRS_UPD_IP = #{CLM_TRS_UPD_IP},
+            CLM_TRS_UPD_ID = #{CLM_TRS_UPD_ID}
+        WHERE CLM_TRS_IDX = #{CLM_TRS_IDX}
+    </update>
+</mapper>

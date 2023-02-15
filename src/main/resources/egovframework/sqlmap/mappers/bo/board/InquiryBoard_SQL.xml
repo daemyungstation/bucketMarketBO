@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="InquiryBoard">
+
+    <!-- 관리자 > 고객센터 > 1:1 문의 조건절 -->
+    <sql id="inquiryBoardWhere">
+        <where>
+            <if test="searchStartDate != null and searchStartDate != '' and searchEndDate != null and searchEndDate != ''">
+                AND MEM_ADV_REG_DT BETWEEN REPLACE(#{searchStartDate},'-', '')||'000000' AND REPLACE(#{searchEndDate},'-', '')||'235959'
+            </if>
+            <if test="searchMemAdvTitleAndContents != null and searchMemAdvTitleAndContents != ''">
+                AND DBMS_LOB.INSTR(MEM_ADV_TITLE || MEM_ADV_CONTENTS, #{searchMemAdvTitleAndContents}) > 0
+            </if>
+            <if test="searchMemAdvQstType != null and searchMemAdvQstType != ''">
+                AND MEM_ADV_QST_TYPE = #{searchMemAdvQstType}
+            </if>
+            <if test="searchMemMstMemNm != null and searchMemMstMemNm !=''">
+                AND MEM_MST_MEM_NM = #{searchMemMstMemNm}
+            </if>
+            <if test="searchMemAdvHp3 != null and searchMemAdvHp3 != ''">
+                AND MEM_ADV_HP3 = #{searchMemAdvHp3}
+            </if>
+            <if test="searchMemAdvRplYn != null and searchMemAdvRplYn !=''">
+                AND MEM_ADV_RPL_YN = #{searchMemAdvRplYn}
+            </if>
+        </where>
+    </sql>
+    
+    <!-- 관리자 > 고객센터 > 1:1문의 목록 개수 -->
+    <select id="selectInquiryBoardListCount" parameterType="HashMap" resultType="Integer">
+        /* InquiryBoard.selectInquiryBoardListCount */
+        SELECT COUNT(MEM_ADV_IDX)
+        FROM T_MEM_ADV
+        <include refid="inquiryBoardWhere"/>
+    </select>
+   
+   <!-- 관리자 > 고객센터 > 1:1문의 목록 -->
+    <select id="selectInquiryBoardList" parameterType="HashMap" resultType="HashMap">
+        /* InquiryBoard.selectInquiryBoardList */
+        SELECT
+            RNUM,
+            MEM_ADV_IDX,
+            MEM_MST_MEM_NM,
+            MEM_ADV_HP1,
+            MEM_ADV_HP2,
+            MEM_ADV_HP3,
+            MEM_ADV_QST_TYPE,
+            (SELECT CMN_COM_NM FROM T_CMM_COM WHERE CMN_COM_IDX = MEM_ADV_QST_TYPE) AS MEM_ADV_QST_TYPE_NM,
+            MEM_ADV_TITLE,
+            NVL(MEM_ADV_RPL_YN, 'N') AS MEM_ADV_RPL_YN,
+            MEM_ADV_REG_DT,
+            MEM_ADV_UPD_DT
+        FROM (
+            SELECT S1.*,
+                ROWNUM AS RNUM
+            FROM (
+                SELECT
+                    MEM_ADV_IDX,
+                    MEM_MST_MEM_NM,
+                    MEM_ADV_HP1,
+                    MEM_ADV_HP2,
+                    MEM_ADV_HP3,
+                    MEM_ADV_QST_TYPE,
+                    MEM_ADV_TITLE,
+                    MEM_ADV_RPL_YN,
+                    MEM_ADV_REG_DT,
+                    MEM_ADV_UPD_DT
+                FROM T_MEM_ADV
+                <include refid="inquiryBoardWhere"/>
+                ORDER BY MEM_ADV_REG_DT DESC
+            ) S1
+            WHERE ROWNUM <![CDATA[<=]]> #{endNum}
+        ) S2
+        WHERE S2.RNUM <![CDATA[>=]]> #{startNum}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 1:1문의 상세 -->
+    <resultMap id="resultTermManagerInfo" type="HashMap">
+        <result column="MEM_ADV_IDX" property="MEM_ADV_IDX" />
+        <result column="PRD_MST_NO" property="PRD_MST_NO" />
+        <result column="PRD_MST_NM" property="PRD_MST_NM" />
+        <result column="MODEL_NM" property="MODEL_NM" />
+        <result column="MEM_ADV_REG_DT" property="MEM_ADV_REG_DT" />
+        <result column="MEM_MST_MEM_NM" property="MEM_MST_MEM_NM" />
+        <result column="MEM_ADV_HP1" property="MEM_ADV_HP1" />
+        <result column="MEM_ADV_HP2" property="MEM_ADV_HP2" />
+        <result column="MEM_ADV_HP3" property="MEM_ADV_HP3" />
+        <result column="MEM_ADV_TITLE" property="MEM_ADV_TITLE" />
+        <result column="MEM_ADV_CONTENTS" property="MEM_ADV_CONTENTS"/>
+        <result column="MEM_ADV_RPL_YN" property="MEM_ADV_RPL_YN" />
+        <result column="MEM_ADV_RPL_CONTENTS" property="MEM_ADV_RPL_CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result column="MEM_ADV_UPD_DT" property="MEM_ADV_UPD_DT" />
+        <result column="MEM_ADV_UPD_ID" property="MEM_ADV_UPD_ID" />
+        <result column="MEM_ADV_UPD_NM" property="MEM_ADV_UPD_NM" />
+    </resultMap>
+    <select id="selectInquiryBoardInfo" parameterType="HashMap" resultMap="resultTermManagerInfo">
+        /* InquiryBoard.selectInquiryBoardInfo */
+        SELECT
+            MA.MEM_ADV_IDX,
+            MA.PRD_MST_NO,
+            (SELECT CPM.PRD_MST_NM FROM C_PRD_MST CPM WHERE CPM.PRD_MST_NO = MA.PRD_MST_NO) AS PRD_MST_NM,
+            (
+                SELECT VPM.MODEL_NM
+                FROM C_PRD_MST CPM, V_PRD_MST VPM
+                WHERE CPM.PROD_CD = VPM.PROD_CD
+                    AND CPM.MODEL_CD = VPM.MODEL_CD
+                    AND CPM.PROD_KIND = VPM.PROD_KIND 
+                    AND CPM.PRD_MST_NO = MA.PRD_MST_NO
+            ) AS MODEL_NM,
+            MA.MEM_ADV_REG_DT,
+            MA.MEM_MST_MEM_NM,
+            MA.MEM_ADV_HP1,
+            MA.MEM_ADV_HP2,
+            MA.MEM_ADV_HP3,
+            MA.MEM_ADV_TITLE,
+            MA.MEM_ADV_CONTENTS,
+            NVL(MA.MEM_ADV_RPL_YN, 'N') AS MEM_ADV_RPL_YN,
+            MA.MEM_ADV_RPL_CONTENTS,
+            MA.MEM_ADV_UPD_DT,
+            MA.MEM_ADV_UPD_ID,
+            (SELECT ADM_MST_NM FROM T_ADM_MST WHERE ADM_MST_ID = MA.MEM_ADV_UPD_ID) AS MEM_ADV_UPD_NM
+        FROM T_MEM_ADV MA
+        WHERE MEM_ADV_IDX = #{MEM_ADV_IDX}
+    </select>
+    
+    <!-- 관리자 > 고객센터 > 1:1문의 답변 등록 -->
+    <update id="updateInquiryBoard" parameterType="HashMap">
+        /* InquiryBoard.udateInquiryBoard */
+        UPDATE T_MEM_ADV SET
+            MEM_ADV_RPL_YN = 'Y',
+            MEM_ADV_RPL_CONTENTS = #{MEM_ADV_RPL_CONTENTS:CLOB},
+            MEM_ADV_UPD_DT = TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS'),
+            MEM_ADV_UPD_ID = #{MEM_ADV_UPD_ID},
+            MEM_ADV_UPD_IP = #{MEM_ADV_UPD_IP}
+        WHERE MEM_ADV_IDX = #{MEM_ADV_IDX}
+    </update>
+</mapper>
